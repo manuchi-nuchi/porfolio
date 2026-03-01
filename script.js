@@ -64,7 +64,8 @@ function removeLegacyFoldables() {
 	const foldables = Array.from(document.querySelectorAll("details"));
 
 	foldables.forEach((foldable) => {
-		const summary = foldable.querySelector(":scope > summary");
+		const firstChild = foldable.firstElementChild;
+		const summary = firstChild && firstChild.tagName.toLowerCase() === "summary" ? firstChild : null;
 		if (!summary) {
 			return;
 		}
@@ -118,7 +119,10 @@ function removeRandomLoremParagraph() {
 }
 
 function initializeParagraphControls() {
-	removeLegacyFoldables();
+	try {
+		removeLegacyFoldables();
+	} catch {
+	}
 
 	for (let index = 0; index < 3; index += 1) {
 		addRandomLoremParagraph();
@@ -135,4 +139,8 @@ function initializeParagraphControls() {
 	}
 }
 
-document.addEventListener("DOMContentLoaded", initializeParagraphControls);
+if (document.readyState === "loading") {
+	document.addEventListener("DOMContentLoaded", initializeParagraphControls);
+} else {
+	initializeParagraphControls();
+}
