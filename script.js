@@ -70,7 +70,7 @@ async function initializeHomeCarousel() {
 
 	const NEAR_EDGE_PX = 110;
 	const SWIPE_TRIGGER_PX = 45;
-	const SLIDE_DURATION_MS = 320;
+	const SLIDE_DURATION_MS = 500;
 	const AUTO_ADVANCE_MS = 4000;
 	let slideFinishTimeoutId = null;
 	let autoAdvanceTimeoutId = null;
@@ -137,7 +137,10 @@ async function initializeHomeCarousel() {
 			slideFinishTimeoutId = null;
 		}
 
-		const slideDistancePx = Math.max(1, Math.round(carouselMask.offsetWidth));
+		const maskWidthPx = Math.max(1, Math.round(carouselMask.offsetWidth));
+		const imageWidthPx = Math.max(maskWidthPx, Math.round(carouselImage.offsetWidth));
+		const extraHalfOverflowPx = Math.max(0, Math.round((imageWidthPx - maskWidthPx) / 2));
+		const slideDistancePx = maskWidthPx + extraHalfOverflowPx;
 		const incomingStartShift = direction > 0 ? `${slideDistancePx}px` : `-${slideDistancePx}px`;
 		const outgoingEndShift = direction > 0 ? `-${slideDistancePx}px` : `${slideDistancePx}px`;
 
