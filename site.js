@@ -6,6 +6,9 @@ const NEXT_TAB_ROTATION_KEY = "nextActiveTabRotation";
 const NEXT_TAB_ROTATION_PATH_KEY = "nextActiveTabRotationPath";
 const TAB_ROTATION_MIN = -5;
 const TAB_ROTATION_MAX = 5;
+const TAB_PRESS_TRANSLATE_X_MAX = 2;
+const TAB_PRESS_TRANSLATE_Y_MAX = 3;
+const TAP_NAV_DELAY_MS = 140;
 const BASE_SCALE = 1.5;
 const MIN_ZOOM = 0.7;
 const MAX_ZOOM = 2;
@@ -157,13 +160,13 @@ function initializeTabSelectionPersistence() {
 		return;
 	}
 
-	const isMobilePlatform = window.matchMedia("(any-hover: none) and (any-pointer: coarse)").matches;
-
 	applySavedSelectedTabTransform();
 	siteNav.addEventListener("click", saveSelectedTabTransform);
 
 	const tabs = Array.from(siteNav.querySelectorAll("a"));
 	tabs.forEach((tab) => {
+		let pressStartedFromTouch = false;
+
 		const randomizeStartPhase = () => {
 			tab.style.setProperty("--tab-phase-start-x", `${Math.floor(Math.random() * 360)}deg`);
 			tab.style.setProperty("--tab-phase-start-y", `${Math.floor(Math.random() * 360)}deg`);
@@ -171,35 +174,76 @@ function initializeTabSelectionPersistence() {
 
 		const applyRandomPressTilt = () => {
 			const pressTilt = Math.random() * (TAB_ROTATION_MAX - TAB_ROTATION_MIN) + TAB_ROTATION_MIN;
+			const pressTranslateX = (Math.random() * 2 - 1) * TAB_PRESS_TRANSLATE_X_MAX;
+			const pressTranslateY = (Math.random() * 2 - 1) * TAB_PRESS_TRANSLATE_Y_MAX;
 			tab.style.setProperty("--tab-press-tilt", `${pressTilt}deg`);
+			tab.style.setProperty("--tab-press-translate-x", `${pressTranslateX}px`);
+			tab.style.setProperty("--tab-press-translate-y", `${pressTranslateY}px`);
 			tab.classList.add("mobile-pressed");
 		};
 
 		const handlePointerDown = (event) => {
 			if (event.pointerType === "mouse") {
+				pressStartedFromTouch = false;
 				return;
 			}
 
+			pressStartedFromTouch = true;
 			applyRandomPressTilt();
 		};
 
+		const handlePointerUp = (event) => {
+			if (event.pointerType === "mouse") {
+				clearPressTilt();
+				return;
+			}
+
+			setTimeout(clearPressTilt, TAP_NAV_DELAY_MS);
+		};
+
+		const handleTouchStart = () => {
+			pressStartedFromTouch = true;
+			applyRandomPressTilt();
+		};
+
+		const handleTouchEnd = () => {
+			setTimeout(clearPressTilt, TAP_NAV_DELAY_MS);
+		};
+
 		const clearPressTilt = () => {
+			pressStartedFromTouch = false;
 			tab.classList.remove("mobile-pressed");
+		};
+
+		const handleTabClick = (event) => {
+			if (!pressStartedFromTouch) {
+				return;
+			}
+
+			const destinationUrl = new URL(tab.href, window.location.href);
+			if (destinationUrl.href === window.location.href) {
+				setTimeout(clearPressTilt, TAP_NAV_DELAY_MS);
+				return;
+			}
+
+			event.preventDefault();
+			setTimeout(() => {
+				window.location.href = destinationUrl.href;
+			}, TAP_NAV_DELAY_MS);
 		};
 
 		randomizeStartPhase();
 		tab.addEventListener("mouseenter", randomizeStartPhase);
 		tab.addEventListener("focus", randomizeStartPhase);
 
-		if (isMobilePlatform) {
-			tab.addEventListener("pointerdown", handlePointerDown);
-			tab.addEventListener("pointerup", clearPressTilt);
-			tab.addEventListener("pointercancel", clearPressTilt);
-			tab.addEventListener("touchstart", applyRandomPressTilt, { passive: true });
-			tab.addEventListener("touchend", clearPressTilt);
-			tab.addEventListener("touchcancel", clearPressTilt);
-			tab.addEventListener("blur", clearPressTilt);
-		}
+		tab.addEventListener("pointerdown", handlePointerDown);
+		tab.addEventListener("pointerup", handlePointerUp);
+		tab.addEventListener("pointercancel", clearPressTilt);
+		tab.addEventListener("touchstart", handleTouchStart, { passive: true });
+		tab.addEventListener("touchend", handleTouchEnd);
+		tab.addEventListener("touchcancel", clearPressTilt);
+		tab.addEventListener("click", handleTabClick);
+		tab.addEventListener("blur", clearPressTilt);
 	});
 }
 

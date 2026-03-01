@@ -332,19 +332,17 @@ body {
 	--active-tab-rotation: 2.2deg;
 }
 
-@media (any-hover: none) and (any-pointer: coarse) {
-	.site-nav a.mobile-pressed::before {
-		background-color: #ffffff;
-		transform: translate(
-			calc(var(--tab-amplitude-x) * sin(var(--tab-phase-start-x, 0deg))),
-			calc(var(--tab-amplitude-y) * sin(var(--tab-phase-start-y, 0deg)))
-		) rotate(var(--tab-press-tilt, 0deg));
-		animation: none;
-	}
+.site-nav a.mobile-pressed::before {
+	background-color: #ffffff;
+	transform: translate(
+		var(--tab-press-translate-x, 0px),
+		var(--tab-press-translate-y, 0px)
+	) rotate(var(--tab-press-tilt, 0deg));
+	animation: none;
+}
 
-	.site-nav a.mobile-pressed {
-		color: #000000;
-	}
+.site-nav a.mobile-pressed {
+	color: #000000;
 }
 /* #endregion */
 
