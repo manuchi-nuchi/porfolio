@@ -216,7 +216,7 @@
 body {
 	margin: 0;
 	min-height: 100vh;
-	padding: 5.25rem 1.25rem 3rem;
+	padding: 4rem 1.25rem 3rem;
 	font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
 	line-height: 1.7;
 	color: #ffffff;
@@ -451,6 +451,150 @@ p {
 
 p + p {
 	margin-top: 1rem;
+}
+/* #endregion */
+
+/* #region Home Carousel */
+.home-page main {
+	width: min(824px, 100%);
+}
+
+.home-carousel {
+	display: block;
+}
+
+.carousel-viewport {
+	width: min(760px, 100%);
+	aspect-ratio: 760 / 500;
+	justify-self: center;
+	position: relative;
+	border-radius: 14px;
+	touch-action: pan-y;
+	user-select: none;
+	-webkit-user-select: none;
+	--window-width: min(620px, calc(100% - 2rem));
+	--window-height: min(408px, calc(100% - 2rem));
+}
+
+.carousel-mask {
+	position: absolute;
+	left: 50%;
+	top: 50%;
+	width: var(--window-width);
+	height: var(--window-height);
+	overflow: hidden;
+	border-radius: 18px;
+	transform-origin: center;
+	--mask-offset-x: calc(var(--amplitude-x) * sin(var(--phase-x)));
+	--mask-offset-y: calc(var(--amplitude-y) * sin(var(--phase-y)));
+	transform: translate(-50%, -50%) translate(var(--mask-offset-x), var(--mask-offset-y)) rotate(var(--tilt-angle));
+	animation:
+		phase-x-loop calc(var(--speed-x) / var(--frequency-x)) linear infinite,
+		phase-y-loop calc(var(--speed-y) / var(--frequency-y)) linear infinite,
+		tilt-loop 4s ease-in-out infinite;
+}
+
+.carousel-viewport.is-sliding .carousel-mask {
+	animation-play-state: paused;
+}
+
+.carousel-mask img {
+	display: block;
+	position: absolute;
+	left: 50%;
+	top: 50%;
+	width: 760px;
+	height: 500px;
+	max-width: none;
+	object-fit: cover;
+	object-position: center;
+	user-select: none;
+	-webkit-user-select: none;
+	-webkit-user-drag: none;
+	--phase-x: inherit;
+	--phase-y: inherit;
+	--tilt-angle: inherit;
+	--mask-offset-x: calc(var(--amplitude-x) * sin(var(--phase-x)));
+	--mask-offset-y: calc(var(--amplitude-y) * sin(var(--phase-y)));
+	--slide-shift: 0px;
+	will-change: transform;
+	transform-origin: center;
+	transform: translate(-50%, -50%) translateX(var(--slide-shift)) translate(calc(-1 * var(--mask-offset-x)), calc(-1 * var(--mask-offset-y))) rotate(calc(-1 * var(--tilt-angle)));
+}
+
+.carousel-transition-image {
+	z-index: 2;
+}
+
+.carousel-button {
+	position: absolute;
+	top: 50%;
+	transform: translateY(-50%);
+	z-index: 3;
+	border: 1px solid #3f3f46;
+	background: #111111;
+	color: #ffffff;
+	font: inherit;
+	font-size: 1.4rem;
+	line-height: 1;
+	width: 2.3rem;
+	height: 2.3rem;
+	border-radius: 999px;
+	cursor: pointer;
+	padding: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	opacity: 0;
+	pointer-events: none;
+	transition: opacity 0.3s ease;
+}
+
+.carousel-arrow {
+	display: block;
+	line-height: 1;
+	transform: translateY(-100rem);
+}
+
+.carousel-arrow-prev {
+	transform: translate(-0.08rem, -0.1rem);
+}
+
+.carousel-arrow-next {
+	transform: translate(0.08rem, -0.1rem);
+}
+
+.carousel-button-prev {
+	left: 0;
+}
+
+.carousel-button-next {
+	right: 0;
+}
+
+.carousel-viewport.show-prev .carousel-button-prev,
+.carousel-viewport.show-next .carousel-button-next {
+	opacity: 1;
+	pointer-events: auto;
+}
+
+.carousel-button:hover {
+	background: #ffffff;
+	color: #000000;
+}
+
+@media (max-width: 860px) {
+	.home-page main {
+		width: min(760px, 100%);
+	}
+
+	.home-carousel {
+		display: block;
+	}
+
+	.carousel-viewport {
+		width: 100%;
+	}
 }
 /* #endregion */
 

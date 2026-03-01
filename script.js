@@ -1,146 +1,333 @@
-const LOREM_PARAGRAPHS = [
-	"Integer nec odio. Praesent libero. Sed cursus ante dapibus diam. Sed nisi. Nulla quis sem at nibh elementum imperdiet.",
-	"Curabitur sodales ligula in libero. Sed dignissim lacinia nunc. Curabitur tortor. Pellentesque nibh. Aenean quam.",
-	"Fusce nec tellus sed augue semper porta. Mauris massa. Vestibulum lacinia arcu eget nulla. Class aptent taciti sociosqu ad litora.",
-	"Nam nec ante. Sed lacinia, urna non tincidunt mattis, tortor neque adipiscing diam, a cursus ipsum ante quis turpis.",
-	"Morbi lectus risus, iaculis vel, suscipit quis, luctus non, massa. Fusce ac turpis quis ligula lacinia aliquet.",
-	"Suspendisse potenti. Curabitur at lacus ac velit ornare lobortis. Curabitur a felis in nunc fringilla tristique.",
-	"Praesent congue erat at massa. Sed cursus turpis vitae tortor. Donec posuere vulputate arcu non facilisis.",
-	"Phasellus accumsan cursus velit. Vestibulum ante ipsum primis in faucibus orci luctus et ultrices posuere cubilia curae.",
-	"In ac dui quis mi consectetuer lacinia. Nam pretium turpis et arcu. Duis arcu tortor, suscipit eget, imperdiet nec, imperdiet iaculis.",
-	"Aenean ut eros et nisl sagittis vestibulum. Nullam nulla eros, ultricies sit amet, nonummy id, imperdiet feugiat.",
-	"Etiam ultricies nisi vel augue. Curabitur ullamcorper ultricies nisi. Nam eget dui etiam rhoncus.",
-	"Maecenas tempus, tellus eget condimentum rhoncus, sem quam semper libero, sit amet adipiscing sem neque sed ipsum.",
-	"Donec quam felis, ultricies nec, pellentesque eu, pretium quis, sem. Nulla consequat massa quis enim.",
-	"Donec pede justo, fringilla vel, aliquet nec, vulputate eget, arcu. In enim justo, rhoncus ut, imperdiet a.",
-	"Nullam dictum felis eu pede mollis pretium. Integer tincidunt. Cras dapibus vivamus elementum semper nisi.",
-	"Aenean vulputate eleifend tellus. Aenean leo ligula, porttitor eu, consequat vitae, eleifend ac, enim.",
-	"Aliquam lorem ante, dapibus in, viverra quis, feugiat a, tellus. Phasellus viverra nulla ut metus varius laoreet.",
-	"Quisque rutrum. Aenean imperdiet. Etiam ultricies nisi vel augue, curabitur ullamcorper ultricies nisi.",
-	"Nunc nonummy metus. Vestibulum volutpat pretium libero. Cras id dui aenean ut eros et nisl sagittis.",
-	"Ut a nisl id ante tempus hendrerit. Curabitur ligula sapien, tincidunt non, euismod vitae, posuere imperdiet.",
-	"Maecenas malesuada. Praesent congue erat at massa. Sed cursus turpis vitae tortor donec posuere vulputate.",
-	"Proin sapien ipsum, porta a, auctor quis, euismod ut, mi. Aenean viverra rhoncus pede.",
-	"Pellentesque habitant morbi tristique senectus et netus et malesuada fames ac turpis egestas.",
-	"Vivamus elementum semper nisi. Aenean vulputate eleifend tellus. Aenean leo ligula, porttitor eu, consequat vitae.",
-	"Sed fringilla mauris sit amet nibh. Donec sodales sagittis magna. Sed consequat, leo eget bibendum sodales.",
-	"Donec elit libero, sodales nec, volutpat a, suscipit non, turpis. Nullam sagittis. Suspendisse pulvinar.",
-	"Vestibulum suscipit nulla quis orci. Nam commodo suscipit quam. Sed a libero pellentesque.",
-	"Integer ante arcu, accumsan a, consectetuer eget, posuere ut, mauris. Praesent adipiscing.",
-	"Praesent blandit laoreet nibh. Fusce convallis metus id felis luctus adipiscing pellentesque posuere.",
-	"Etiam iaculis nunc ac metus. Ut id nisl quis enim dignissim sagittis. Etiam sollicitudin, ipsum eu pulvinar rutrum.",
-	"Vestibulum eu odio. Phasellus nec sem in justo pellentesque facilisis. Etiam imperdiet imperdiet orci.",
-	"Nunc nec neque. Phasellus leo dolor, tempus non, auctor et, hendrerit quis, nisi.",
-	"Curabitur ligula sapien, tincidunt non, euismod vitae, posuere imperdiet, leo. Maecenas malesuada.",
-	"Fusce fermentum odio nec arcu. Sed aliquam ultrices mauris. Integer ante arcu, accumsan a.",
-	"In consectetuer turpis ut velit. Nulla sit amet est. Aenean posuere, tortor sed cursus feugiat.",
-	"Curabitur turpis. Vestibulum facilisis, purus nec pulvinar iaculis, ligula mi congue nunc, vitae euismod ligula urna in dolor.",
-	"Mauris sollicitudin fermentum libero. Praesent nonummy mi in odio. Nunc interdum lacus sit amet orci.",
-	"Donec vitae sapien ut libero venenatis faucibus. Nullam quis ante. Etiam sit amet orci eget eros faucibus tincidunt.",
-	"Duis leo. Sed fringilla mauris sit amet nibh. Donec sodales sagittis magna sed consequat leo.",
-	"Aenean massa. Cum sociis natoque penatibus et magnis dis parturient montes, nascetur ridiculus mus.",
-	"In dui magna, posuere eget, vestibulum et, tempor auctor, justo. In ac felis quis tortor malesuada pretium.",
-	"Pellentesque auctor neque nec urna. Proin sapien ipsum, porta a, auctor quis, euismod ut, mi.",
-	"Ut varius tincidunt libero. Phasellus dolor. Maecenas vestibulum mollis diam pellentesque ut neque.",
-	"Phasellus ullamcorper ipsum rutrum nunc. Nunc nonummy metus vestibulum volutpat pretium libero.",
-	"Vestibulum rutrum, mi nec elementum vehicula, eros quam gravida nisl, id fringilla neque ante vel mi.",
-	"Nunc egestas, augue at pellentesque laoreet, felis eros vehicula leo, at malesuada velit leo quis pede.",
-	"Morbi ac felis. Nunc egestas, augue at pellentesque laoreet, felis eros vehicula leo.",
-	"Fusce vulputate eleifend sapien. Vestibulum purus quam, scelerisque ut, mollis sed, nonummy id, metus.",
-	"Nullam accumsan lorem in dui. Cras ultricies mi eu turpis hendrerit fringilla vestibulum ante.",
-	"Morbi vestibulum volutpat enim. Aliquam eu nunc. Nunc sed turpis sed purus porta iaculis.",
-];
+const CAROUSEL_FOLDER = "img/carousel";
+const CAROUSEL_MANIFEST_PATH = `${CAROUSEL_FOLDER}/manifest.json`;
 
-function getRandomParagraph(paragraphs) {
-	if (!Array.isArray(paragraphs) || paragraphs.length === 0) {
-		return "";
+function getImagesFromGlobalManifest() {
+	const globalManifest = window.CAROUSEL_MANIFEST;
+	if (!globalManifest || !Array.isArray(globalManifest.images)) {
+		return [];
 	}
 
-	const randomIndex = Math.floor(Math.random() * paragraphs.length);
-	return paragraphs[randomIndex];
+	return globalManifest.images
+		.filter((imageName) => typeof imageName === "string" && imageName.trim().length > 0)
+		.map((imageName) => `${CAROUSEL_FOLDER}/${imageName}`);
 }
 
-function removeLegacyFoldables() {
-	const foldables = Array.from(document.querySelectorAll("details"));
+async function loadCarouselImages() {
+	const globalImages = getImagesFromGlobalManifest();
+	if (globalImages.length > 0) {
+		return globalImages;
+	}
 
-	foldables.forEach((foldable) => {
-		const firstChild = foldable.firstElementChild;
-		const summary = firstChild && firstChild.tagName.toLowerCase() === "summary" ? firstChild : null;
-		if (!summary) {
-			return;
-		}
+	const response = await fetch(CAROUSEL_MANIFEST_PATH, { cache: "no-store" });
+	if (!response.ok) {
+		throw new Error(`Unable to load carousel manifest: ${response.status}`);
+	}
 
-		const summaryText = summary.textContent.trim().toLowerCase();
-		const isLegacySection = summaryText === "base content" || summaryText === "generated paragraphs";
-		if (!isLegacySection) {
-			return;
-		}
+	const manifest = await response.json();
+	const images = Array.isArray(manifest.images)
+		? manifest.images.filter((imageName) => typeof imageName === "string" && imageName.trim().length > 0)
+		: [];
 
-		const parent = foldable.parentElement;
-		if (!parent) {
-			return;
-		}
+	return images.map((imageName) => `${CAROUSEL_FOLDER}/${imageName}`);
+}
 
-		const childrenToKeep = Array.from(foldable.children).filter((child) => child !== summary);
-		childrenToKeep.forEach((child) => {
-			parent.insertBefore(child, foldable);
-		});
+async function initializeHomeCarousel() {
+	const carouselImage = document.querySelector("#carousel-image");
+	const previousButton = document.querySelector("#carousel-prev");
+	const nextButton = document.querySelector("#carousel-next");
+	const carouselViewport = document.querySelector(".carousel-viewport");
+	const carouselMask = document.querySelector(".carousel-mask");
 
-		foldable.remove();
+	if (!carouselImage || !previousButton || !nextButton || !carouselViewport || !carouselMask) {
+		return;
+	}
+
+	carouselImage.draggable = false;
+	carouselViewport.addEventListener("dragstart", (event) => {
+		event.preventDefault();
 	});
-}
+	carouselViewport.addEventListener("selectstart", (event) => {
+		event.preventDefault();
+	});
 
-function addRandomLoremParagraph() {
-	const main = document.querySelector("main");
-	if (!main) {
-		return;
-	}
+	let carouselImages = [];
+	let currentIndex = 0;
+	let isAnimating = false;
 
-	const randomParagraph = getRandomParagraph(LOREM_PARAGRAPHS);
-	if (!randomParagraph) {
-		return;
-	}
-
-	const paragraphElement = document.createElement("p");
-	paragraphElement.textContent = randomParagraph;
-	paragraphElement.className = "random-lorem";
-
-	main.append(paragraphElement);
-}
-
-function removeRandomLoremParagraph() {
-	const allParagraphs = Array.from(document.querySelectorAll("main p"));
-	if (allParagraphs.length === 0) {
-		return;
-	}
-
-	const randomIndex = Math.floor(Math.random() * allParagraphs.length);
-	allParagraphs[randomIndex].remove();
-}
-
-function initializeParagraphControls() {
 	try {
-		removeLegacyFoldables();
+		carouselImages = await loadCarouselImages();
 	} catch {
+		carouselImages = [];
 	}
 
-	for (let index = 0; index < 3; index += 1) {
-		addRandomLoremParagraph();
+	if (carouselImages.length === 0) {
+		carouselImage.removeAttribute("src");
+		carouselImage.alt = "No carousel images found";
+		previousButton.disabled = true;
+		nextButton.disabled = true;
+		return;
 	}
 
-	const addButton = document.querySelector("#add-paragraph-button");
-	if (addButton) {
-		addButton.addEventListener("click", addRandomLoremParagraph);
-	}
+	const NEAR_EDGE_PX = 110;
+	const SWIPE_TRIGGER_PX = 45;
+	const SLIDE_DURATION_MS = 320;
+	const AUTO_ADVANCE_MS = 4000;
+	let slideFinishTimeoutId = null;
+	let autoAdvanceTimeoutId = null;
+	let activePointerId = null;
+	let swipeStartX = 0;
+	let swipeStartY = 0;
+	let swipeHandled = false;
+	let touchStartX = 0;
+	let touchStartY = 0;
+	let touchSwipeHandled = false;
 
-	const removeButton = document.querySelector("#remove-paragraph-button");
-	if (removeButton) {
-		removeButton.addEventListener("click", removeRandomLoremParagraph);
-	}
+	const transitionImage = document.createElement("img");
+	transitionImage.alt = "";
+	transitionImage.width = 760;
+	transitionImage.height = 500;
+	transitionImage.className = "carousel-transition-image";
+	transitionImage.setAttribute("aria-hidden", "true");
+	carouselMask.append(transitionImage);
+
+	const updateArrowVisibility = (event) => {
+		const bounds = carouselViewport.getBoundingClientRect();
+		const pointerX = event.clientX - bounds.left;
+		const nearLeft = pointerX <= NEAR_EDGE_PX;
+		const nearRight = pointerX >= bounds.width - NEAR_EDGE_PX;
+
+		carouselViewport.classList.toggle("show-prev", nearLeft);
+		carouselViewport.classList.toggle("show-next", nearRight);
+	};
+
+	carouselViewport.addEventListener("mousemove", updateArrowVisibility);
+	carouselViewport.addEventListener("mouseleave", () => {
+		carouselViewport.classList.remove("show-prev");
+		carouselViewport.classList.remove("show-next");
+	});
+
+	const setImageForIndex = (index) => {
+		const source = carouselImages[index];
+		carouselImage.src = source;
+		carouselImage.alt = `Carousel image ${index + 1} of ${carouselImages.length}`;
+	};
+
+	const scheduleAutoAdvance = () => {
+		if (autoAdvanceTimeoutId !== null) {
+			window.clearTimeout(autoAdvanceTimeoutId);
+		}
+
+		autoAdvanceTimeoutId = window.setTimeout(() => {
+			showNextImage();
+		}, AUTO_ADVANCE_MS);
+	};
+
+	const animateToIndex = (nextIndex, direction) => {
+		if (isAnimating || nextIndex === currentIndex) {
+			return;
+		}
+
+		isAnimating = true;
+		if (autoAdvanceTimeoutId !== null) {
+			window.clearTimeout(autoAdvanceTimeoutId);
+			autoAdvanceTimeoutId = null;
+		}
+		if (slideFinishTimeoutId !== null) {
+			window.clearTimeout(slideFinishTimeoutId);
+			slideFinishTimeoutId = null;
+		}
+
+		const slideDistancePx = Math.max(1, Math.round(carouselMask.offsetWidth));
+		const incomingStartShift = direction > 0 ? `${slideDistancePx}px` : `-${slideDistancePx}px`;
+		const outgoingEndShift = direction > 0 ? `-${slideDistancePx}px` : `${slideDistancePx}px`;
+
+		carouselViewport.classList.add("is-sliding");
+
+		transitionImage.src = carouselImages[nextIndex];
+		transitionImage.alt = "";
+
+		carouselImage.style.transition = "none";
+		transitionImage.style.transition = "none";
+		carouselImage.style.setProperty("--slide-shift", "0px");
+		transitionImage.style.setProperty("--slide-shift", incomingStartShift);
+
+		const finishAnimation = () => {
+			if (!isAnimating) {
+				return;
+			}
+
+			currentIndex = nextIndex;
+			setImageForIndex(currentIndex);
+
+			carouselImage.style.transition = "none";
+			transitionImage.style.transition = "none";
+			carouselImage.style.setProperty("--slide-shift", "0px");
+			transitionImage.style.setProperty("--slide-shift", "0px");
+			if (slideFinishTimeoutId !== null) {
+				window.clearTimeout(slideFinishTimeoutId);
+				slideFinishTimeoutId = null;
+			}
+			carouselViewport.classList.remove("is-sliding");
+			isAnimating = false;
+			scheduleAutoAdvance();
+		};
+
+		const handleTransitionEnd = (event) => {
+			if (event.target !== transitionImage || event.propertyName !== "transform") {
+				return;
+			}
+
+			transitionImage.removeEventListener("transitionend", handleTransitionEnd);
+			finishAnimation();
+		};
+
+		transitionImage.addEventListener("transitionend", handleTransitionEnd);
+
+		window.requestAnimationFrame(() => {
+			window.requestAnimationFrame(() => {
+				const transitionValue = `transform ${SLIDE_DURATION_MS}ms ease`;
+				carouselImage.style.transition = transitionValue;
+				transitionImage.style.transition = transitionValue;
+				carouselImage.style.setProperty("--slide-shift", outgoingEndShift);
+				transitionImage.style.setProperty("--slide-shift", "0px");
+
+				slideFinishTimeoutId = window.setTimeout(() => {
+					transitionImage.removeEventListener("transitionend", handleTransitionEnd);
+					finishAnimation();
+				}, SLIDE_DURATION_MS + 160);
+			});
+		});
+	};
+
+	const showPreviousImage = () => {
+		const nextIndex = (currentIndex - 1 + carouselImages.length) % carouselImages.length;
+		animateToIndex(nextIndex, -1);
+	};
+
+	const showNextImage = () => {
+		const nextIndex = (currentIndex + 1) % carouselImages.length;
+		animateToIndex(nextIndex, 1);
+	};
+
+	const handleSwipeDelta = (deltaX, deltaY) => {
+		const isHorizontalSwipe = Math.abs(deltaX) >= SWIPE_TRIGGER_PX && Math.abs(deltaX) > Math.abs(deltaY);
+		if (!isHorizontalSwipe) {
+			return false;
+		}
+
+		if (deltaX < 0) {
+			showNextImage();
+			return true;
+		}
+
+		showPreviousImage();
+		return true;
+	};
+
+	const handlePointerDown = (event) => {
+		if (event.pointerType === "mouse" && event.button !== 0) {
+			return;
+		}
+
+		const startedOnArrowButton = event.target instanceof Element && event.target.closest(".carousel-button");
+		if (startedOnArrowButton) {
+			return;
+		}
+
+		if (event.pointerType === "mouse") {
+			event.preventDefault();
+		}
+
+		activePointerId = event.pointerId;
+		swipeStartX = event.clientX;
+		swipeStartY = event.clientY;
+		swipeHandled = false;
+		if (typeof carouselViewport.setPointerCapture === "function") {
+			carouselViewport.setPointerCapture(event.pointerId);
+		}
+	};
+
+	const handlePointerMove = (event) => {
+		if (activePointerId === null || event.pointerId !== activePointerId || swipeHandled) {
+			return;
+		}
+
+		const deltaX = event.clientX - swipeStartX;
+		const deltaY = event.clientY - swipeStartY;
+		if (!handleSwipeDelta(deltaX, deltaY)) {
+			return;
+		}
+
+		swipeHandled = true;
+	};
+
+	const resetSwipeState = (event) => {
+		if (activePointerId === null) {
+			return;
+		}
+
+		if (event && event.pointerId !== activePointerId) {
+			return;
+		}
+
+		if (event && typeof carouselViewport.releasePointerCapture === "function") {
+			try {
+				carouselViewport.releasePointerCapture(activePointerId);
+			} catch {
+			}
+		}
+
+		activePointerId = null;
+		swipeHandled = false;
+	};
+
+	const handleTouchStart = (event) => {
+		if (!event.touches || event.touches.length === 0) {
+			return;
+		}
+
+		touchStartX = event.touches[0].clientX;
+		touchStartY = event.touches[0].clientY;
+		touchSwipeHandled = false;
+	};
+
+	const handleTouchMove = (event) => {
+		if (touchSwipeHandled || !event.touches || event.touches.length === 0) {
+			return;
+		}
+
+		const deltaX = event.touches[0].clientX - touchStartX;
+		const deltaY = event.touches[0].clientY - touchStartY;
+		if (!handleSwipeDelta(deltaX, deltaY)) {
+			return;
+		}
+
+		touchSwipeHandled = true;
+		event.preventDefault();
+	};
+
+	const resetTouchSwipeState = () => {
+		touchSwipeHandled = false;
+	};
+
+	previousButton.addEventListener("click", showPreviousImage);
+	nextButton.addEventListener("click", showNextImage);
+	carouselViewport.addEventListener("pointerdown", handlePointerDown);
+	carouselViewport.addEventListener("pointermove", handlePointerMove);
+	carouselViewport.addEventListener("pointerup", resetSwipeState);
+	carouselViewport.addEventListener("pointercancel", resetSwipeState);
+	carouselViewport.addEventListener("pointerleave", resetSwipeState);
+	carouselViewport.addEventListener("touchstart", handleTouchStart, { passive: true });
+	carouselViewport.addEventListener("touchmove", handleTouchMove, { passive: false });
+	carouselViewport.addEventListener("touchend", resetTouchSwipeState);
+	carouselViewport.addEventListener("touchcancel", resetTouchSwipeState);
+
+	setImageForIndex(currentIndex);
+	scheduleAutoAdvance();
 }
 
 if (document.readyState === "loading") {
-	document.addEventListener("DOMContentLoaded", initializeParagraphControls);
+	document.addEventListener("DOMContentLoaded", initializeHomeCarousel);
 } else {
-	initializeParagraphControls();
+	initializeHomeCarousel();
 }

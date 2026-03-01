@@ -5,10 +5,11 @@
 	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 	<title>manuchi nuchi</title>
 	<script src="site.js?v=10"></script>
-	<link rel="stylesheet" href="styles.css?v=10" />
-	<script src="script.js?v=4" defer></script>
+	<link rel="stylesheet" href="styles.css?v=11" />
+	<script src="img/carousel/manifest.js?v=1"></script>
+	<script src="script.js?v=13" defer></script>
 </head>
-<body>
+<body class="home-page">
 	<nav class="site-nav" aria-label="Main navigation">
 		<a class="active" href="index.html">home</a>
 		<a href="projects.html">projects</a>
@@ -18,11 +19,15 @@
 		<a href="contact.html">contact</a>
 	</nav>
 	<main>
-		<h1>manuchi nuchi</h1>
+		<section class="home-carousel" aria-label="Color image carousel">
+			<div class="carousel-viewport">
+				<button class="carousel-button carousel-button-prev" id="carousel-prev" type="button" aria-label="Previous image"><span class="carousel-arrow carousel-arrow-prev">‹</span></button>
+				<div class="carousel-mask">
+					<img id="carousel-image" alt="Carousel image" width="760" height="500" />
+				</div>
+				<button class="carousel-button carousel-button-next" id="carousel-next" type="button" aria-label="Next image"><span class="carousel-arrow carousel-arrow-next">›</span></button>
+			</div>
+		</section>
 	</main>
-	<div id="paragraph-controls">
-		<button id="add-paragraph-button" class="paragraph-button" type="button">more</button>
-		<button id="remove-paragraph-button" class="paragraph-button" type="button">less</button>
-	</div>
 </body>
 </html>
