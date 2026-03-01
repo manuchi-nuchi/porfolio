@@ -199,7 +199,17 @@ p + p {
 /* #endregion */
 
 /* #region Button */
-#add-paragraph-button {
+#paragraph-controls {
+	position: fixed;
+	left: 50%;
+	bottom: 10vh;
+	transform: translateX(-50%);
+	display: flex;
+	gap: 0.75rem;
+	z-index: 1;
+}
+
+.paragraph-button {
 	border: 0;
 	background: transparent;
 	color: #0f172a;
@@ -212,7 +222,7 @@ p + p {
 	z-index: 0;
 }
 
-#add-paragraph-button::before {
+.paragraph-button::before {
 	content: "";
 	position: absolute;
 	inset: 0;
@@ -230,7 +240,7 @@ p + p {
 	transition: box-shadow 140ms ease;
 }
 
-#add-paragraph-button:hover::before {
+.paragraph-button:hover::before {
 	animation:
 		button-phase-x-loop calc(var(--button-speed-x) / var(--button-frequency-x)) linear infinite,
 		button-phase-y-loop calc(var(--button-speed-y) / var(--button-frequency-y)) linear infinite,
@@ -238,7 +248,7 @@ p + p {
 	box-shadow: 0 10px 24px rgba(15, 23, 42, 0.12);
 }
 
-#add-paragraph-button:active::before {
+.paragraph-button:active::before {
 	box-shadow: 0 7px 16px rgba(15, 23, 42, 0.1);
 }
 /* #endregion */
