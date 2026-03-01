@@ -206,9 +206,11 @@ p + p {
 	transform: translateX(-50%);
 	display: flex;
 	gap: 0.75rem;
-	z-index: 1;
+	align-items: center;
+	z-index: 999;
 }
 
+#paragraph-controls > button,
 .paragraph-button {
 	border: 0;
 	background: transparent;
@@ -222,6 +224,7 @@ p + p {
 	z-index: 0;
 }
 
+#paragraph-controls > button::before,
 .paragraph-button::before {
 	content: "";
 	position: absolute;
@@ -240,6 +243,7 @@ p + p {
 	transition: box-shadow 140ms ease;
 }
 
+#paragraph-controls > button:hover::before,
 .paragraph-button:hover::before {
 	animation:
 		button-phase-x-loop calc(var(--button-speed-x) / var(--button-frequency-x)) linear infinite,
@@ -248,6 +252,7 @@ p + p {
 	box-shadow: 0 10px 24px rgba(15, 23, 42, 0.12);
 }
 
+#paragraph-controls > button:active::before,
 .paragraph-button:active::before {
 	box-shadow: 0 7px 16px rgba(15, 23, 42, 0.1);
 }
