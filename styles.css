@@ -331,6 +331,21 @@ body {
 	--active-tab-hue: 8;
 	--active-tab-rotation: 2.2deg;
 }
+
+@media (hover: none) and (pointer: coarse) {
+	.site-nav a.mobile-pressed::before {
+		background-color: #ffffff;
+		transform: translate(
+			calc(var(--tab-amplitude-x) * sin(var(--tab-phase-start-x, 0deg))),
+			calc(var(--tab-amplitude-y) * sin(var(--tab-phase-start-y, 0deg)))
+		) rotate(var(--tab-press-tilt, 0deg));
+		animation: none;
+	}
+
+	.site-nav a.mobile-pressed {
+		color: #000000;
+	}
+}
 /* #endregion */
 
 /* #region Card */

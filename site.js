@@ -6,6 +6,7 @@ const NEXT_TAB_ROTATION_KEY = "nextActiveTabRotation";
 const NEXT_TAB_ROTATION_PATH_KEY = "nextActiveTabRotationPath";
 const TAB_ROTATION_MIN = -5;
 const TAB_ROTATION_MAX = 5;
+const BASE_SCALE = 1.5;
 const MIN_ZOOM = 0.7;
 const MAX_ZOOM = 2;
 const ZOOM_STEP = 0.1;
@@ -27,7 +28,7 @@ function readSavedZoom() {
 
 function applyZoom(level) {
 	const normalizedLevel = clampZoom(level);
-	document.documentElement.style.zoom = String(normalizedLevel);
+	document.documentElement.style.zoom = String(normalizedLevel * BASE_SCALE);
 	localStorage.setItem(ZOOM_STORAGE_KEY, String(normalizedLevel));
 }
 
@@ -156,6 +157,8 @@ function initializeTabSelectionPersistence() {
 		return;
 	}
 
+	const isMobilePlatform = window.matchMedia("(hover: none) and (pointer: coarse)").matches;
+
 	applySavedSelectedTabTransform();
 	siteNav.addEventListener("click", saveSelectedTabTransform);
 
@@ -166,9 +169,26 @@ function initializeTabSelectionPersistence() {
 			tab.style.setProperty("--tab-phase-start-y", `${Math.floor(Math.random() * 360)}deg`);
 		};
 
+		const applyRandomPressTilt = () => {
+			const pressTilt = Math.random() * (TAB_ROTATION_MAX - TAB_ROTATION_MIN) + TAB_ROTATION_MIN;
+			tab.style.setProperty("--tab-press-tilt", `${pressTilt}deg`);
+			tab.classList.add("mobile-pressed");
+		};
+
+		const clearPressTilt = () => {
+			tab.classList.remove("mobile-pressed");
+		};
+
 		randomizeStartPhase();
 		tab.addEventListener("mouseenter", randomizeStartPhase);
 		tab.addEventListener("focus", randomizeStartPhase);
+
+		if (isMobilePlatform) {
+			tab.addEventListener("pointerdown", applyRandomPressTilt);
+			tab.addEventListener("pointerup", clearPressTilt);
+			tab.addEventListener("pointercancel", clearPressTilt);
+			tab.addEventListener("blur", clearPressTilt);
+		}
 	});
 }
 
