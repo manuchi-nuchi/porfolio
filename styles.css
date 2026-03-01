@@ -1,10 +1,138 @@
+
 * {
 	box-sizing: border-box;
 }
 
+/* #region Variables */
 :root {
 	color-scheme: light;
+	--amplitude-x: 5px;
+	--amplitude-y: 6px;
+	--frequency-x: 1.8541;
+	--frequency-y: 1.63099;
+	--speed-x: 3.319s;
+	--speed-y: 2.13s;
+	--phase-x: 0deg;
+	--phase-y: 0deg;
+	--tilt-angle: 0deg;
+	--button-amplitude-x: 2.1px;
+	--button-amplitude-y: 2.9px;
+	--button-frequency-x: 1.59;
+	--button-frequency-y: 1.2321;
+	--button-speed-x: 1.8s;
+	--button-speed-y: 1.4s;
+	--button-phase-x: 0deg;
+	--button-phase-y: 0deg;
+	--button-tilt-angle: 0deg;
 }
+/* #endregion */
+
+/* #region Custom Properties */
+@property --phase-x {
+	syntax: "<angle>";
+	inherits: false;
+	initial-value: 0deg;
+}
+
+@property --phase-y {
+	syntax: "<angle>";
+	inherits: false;
+	initial-value: 0deg;
+}
+
+@property --tilt-angle {
+	syntax: "<angle>";
+	inherits: false;
+	initial-value: 0deg;
+}
+
+@property --button-phase-x {
+	syntax: "<angle>";
+	inherits: false;
+	initial-value: 0deg;
+}
+
+@property --button-phase-y {
+	syntax: "<angle>";
+	inherits: false;
+	initial-value: 0deg;
+}
+
+@property --button-tilt-angle {
+	syntax: "<angle>";
+	inherits: false;
+	initial-value: 0deg;
+}
+/* #endregion */
+
+/* #region Keyframes */
+@keyframes phase-x-loop {
+	0% {
+		--phase-x: 0deg;
+	}
+	100% {
+		--phase-x: 360deg;
+	}
+}
+
+@keyframes phase-y-loop {
+	0% {
+		--phase-y: 0deg;
+	}
+	100% {
+		--phase-y: 360deg;
+	}
+}
+
+@keyframes tilt-loop {
+	0% {
+		--tilt-angle: 0deg;
+	}
+	25% {
+		--tilt-angle: 2deg;
+	}
+	75% {
+		--tilt-angle: -2deg;
+	}
+	100% {
+		--tilt-angle: 0deg;
+	}
+}
+
+@keyframes button-phase-x-loop {
+	0% {
+		--button-phase-x: 0deg;
+	}
+	100% {
+		--button-phase-x: 360deg;
+	}
+}
+
+@keyframes button-phase-y-loop {
+	0% {
+		--button-phase-y: 0deg;
+	}
+	100% {
+		--button-phase-y: 360deg;
+	}
+}
+
+@keyframes button-tilt-loop {
+	0% {
+		--button-tilt-angle: 0deg;
+	}
+	25% {
+		--button-tilt-angle: 2deg;
+	}
+	75% {
+		--button-tilt-angle: -2deg;
+	}
+	100% {
+		--button-tilt-angle: 0deg;
+	}
+}
+/* #endregion */
+
 
 body {
 	margin: 0;
@@ -16,17 +144,43 @@ body {
 	background: linear-gradient(135deg, #f8fbff 0%, #eaf4ff 100%);
 	display: grid;
 	place-items: center;
+	gap: 1rem;
 }
 
+/* #region Card */
 main {
 	width: min(760px, 100%);
-	background: #ffffff;
-	border-radius: 16px;
 	padding: 2rem;
-	box-shadow: 0 16px 40px rgba(15, 23, 42, 0.12);
-	border: 1px solid #e5e7eb;
+	position: relative;
+	z-index: 0;
 }
 
+main::before {
+	content: "";
+	position: absolute;
+	inset: 0;
+	background: #ffffff;
+	border-radius: 20px;
+	box-shadow: 0 16px 40px rgba(15, 23, 42, 0.12);
+	border: 1px solid #e5e7eb;
+	transform-origin: center;
+	transform: translate(
+		calc(var(--amplitude-x) * sin(var(--phase-x))),
+		calc(var(--amplitude-y) * sin(var(--phase-y)))
+	) rotate(var(--tilt-angle));
+	z-index: -1;
+	pointer-events: none;
+}
+
+main:hover::before {
+	animation:
+		phase-x-loop calc(var(--speed-x) / var(--frequency-x)) linear infinite,
+		phase-y-loop calc(var(--speed-y) / var(--frequency-y)) linear infinite,
+		tilt-loop 4s ease-in-out infinite;
+}
+/* #endregion */
+
+/* #region Typography */
 h1 {
 	margin: 0 0 1.25rem;
 	font-size: clamp(1.8rem, 3.2vw, 2.5rem);
@@ -42,3 +196,49 @@ p {
 p + p {
 	margin-top: 1rem;
 }
+/* #endregion */
+
+/* #region Button */
+#add-paragraph-button {
+	border: 0;
+	background: transparent;
+	color: #0f172a;
+	font: inherit;
+	font-weight: 600;
+	padding: 0.7rem 1.1rem;
+	border-radius: 15px;
+	cursor: pointer;
+	position: relative;
+	z-index: 0;
+}
+
+#add-paragraph-button::before {
+	content: "";
+	position: absolute;
+	inset: 0;
+	border: 1px solid #cbd5e1;
+	background: #ffffff;
+	border-radius: 15px;
+	box-shadow: 0 8px 20px rgba(15, 23, 42, 0.08);
+	transform: translate(
+		calc(var(--button-amplitude-x) * sin(var(--button-phase-x))),
+		calc(var(--button-amplitude-y) * sin(var(--button-phase-y)))
+	) rotate(var(--button-tilt-angle));
+	transform-origin: center;
+	z-index: -1;
+	pointer-events: none;
+	transition: box-shadow 140ms ease;
+}
+
+#add-paragraph-button:hover::before {
+	animation:
+		button-phase-x-loop calc(var(--button-speed-x) / var(--button-frequency-x)) linear infinite,
+		button-phase-y-loop calc(var(--button-speed-y) / var(--button-frequency-y)) linear infinite,
+		button-tilt-loop 1.9s ease-in-out infinite;
+	box-shadow: 0 10px 24px rgba(15, 23, 42, 0.12);
+}
+
+#add-paragraph-button:active::before {
+	box-shadow: 0 7px 16px rgba(15, 23, 42, 0.1);
+}
+/* #endregion */
