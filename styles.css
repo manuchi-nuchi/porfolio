@@ -332,7 +332,7 @@ body {
 	--active-tab-rotation: 2.2deg;
 }
 
-@media (hover: none) and (pointer: coarse) {
+@media (any-hover: none) and (any-pointer: coarse) {
 	.site-nav a.mobile-pressed::before {
 		background-color: #ffffff;
 		transform: translate(

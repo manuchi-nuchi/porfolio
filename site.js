@@ -157,7 +157,7 @@ function initializeTabSelectionPersistence() {
 		return;
 	}
 
-	const isMobilePlatform = window.matchMedia("(hover: none) and (pointer: coarse)").matches;
+	const isMobilePlatform = window.matchMedia("(any-hover: none) and (any-pointer: coarse)").matches;
 
 	applySavedSelectedTabTransform();
 	siteNav.addEventListener("click", saveSelectedTabTransform);
@@ -175,6 +175,14 @@ function initializeTabSelectionPersistence() {
 			tab.classList.add("mobile-pressed");
 		};
 
+		const handlePointerDown = (event) => {
+			if (event.pointerType === "mouse") {
+				return;
+			}
+
+			applyRandomPressTilt();
+		};
+
 		const clearPressTilt = () => {
 			tab.classList.remove("mobile-pressed");
 		};
@@ -184,9 +192,12 @@ function initializeTabSelectionPersistence() {
 		tab.addEventListener("focus", randomizeStartPhase);
 
 		if (isMobilePlatform) {
-			tab.addEventListener("pointerdown", applyRandomPressTilt);
+			tab.addEventListener("pointerdown", handlePointerDown);
 			tab.addEventListener("pointerup", clearPressTilt);
 			tab.addEventListener("pointercancel", clearPressTilt);
+			tab.addEventListener("touchstart", applyRandomPressTilt, { passive: true });
+			tab.addEventListener("touchend", clearPressTilt);
+			tab.addEventListener("touchcancel", clearPressTilt);
 			tab.addEventListener("blur", clearPressTilt);
 		}
 	});
