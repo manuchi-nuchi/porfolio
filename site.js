@@ -9,7 +9,7 @@ const TAB_ROTATION_MAX = 5;
 const TAB_PRESS_TRANSLATE_X_MAX = 2;
 const TAB_PRESS_TRANSLATE_Y_MAX = 3;
 const TAP_NAV_DELAY_MS = 140;
-const BASE_SCALE = 1.5;
+const MOBILE_MENU_BREAKPOINT = 860;
 const MIN_ZOOM = 0.7;
 const MAX_ZOOM = 2;
 const ZOOM_STEP = 0.1;
@@ -31,7 +31,8 @@ function readSavedZoom() {
 
 function applyZoom(level) {
 	const normalizedLevel = clampZoom(level);
-	document.documentElement.style.zoom = String(normalizedLevel * BASE_SCALE);
+	document.documentElement.style.zoom = "";
+	document.documentElement.style.fontSize = `${normalizedLevel * 150}%`;
 	localStorage.setItem(ZOOM_STORAGE_KEY, String(normalizedLevel));
 }
 
@@ -154,12 +155,68 @@ function applySavedSelectedTabTransform() {
 	sessionStorage.removeItem(NEXT_TAB_PATH_KEY);
 }
 
+function initializeResponsiveMenu(siteNav) {
+	if (!siteNav.id) {
+		siteNav.id = "site-nav-main";
+	}
+
+	const mobileMenuQuery = window.matchMedia(`(max-width: ${MOBILE_MENU_BREAKPOINT}px)`);
+	let menuToggleButton = document.querySelector(".site-menu-toggle");
+
+	if (!menuToggleButton) {
+		menuToggleButton = document.createElement("button");
+		menuToggleButton.type = "button";
+		menuToggleButton.className = "site-menu-toggle";
+		menuToggleButton.setAttribute("aria-controls", siteNav.id);
+		menuToggleButton.setAttribute("aria-expanded", "false");
+		menuToggleButton.setAttribute("aria-label", "Toggle navigation menu");
+		menuToggleButton.textContent = "☰";
+		document.body.prepend(menuToggleButton);
+	}
+
+	const closeMenu = () => {
+		document.body.classList.remove("nav-open");
+		menuToggleButton.setAttribute("aria-expanded", "false");
+	};
+
+	const toggleMenu = () => {
+		const willOpen = !document.body.classList.contains("nav-open");
+		document.body.classList.toggle("nav-open", willOpen);
+		menuToggleButton.setAttribute("aria-expanded", willOpen ? "true" : "false");
+	};
+
+	menuToggleButton.addEventListener("click", toggleMenu);
+
+	const resetMenuForWideScreen = () => {
+		if (!mobileMenuQuery.matches) {
+			closeMenu();
+		}
+	};
+
+	if (typeof mobileMenuQuery.addEventListener === "function") {
+		mobileMenuQuery.addEventListener("change", resetMenuForWideScreen);
+	} else {
+		mobileMenuQuery.addListener(resetMenuForWideScreen);
+	}
+
+	siteNav.querySelectorAll("a").forEach((tabLink) => {
+		tabLink.addEventListener("click", () => {
+			if (mobileMenuQuery.matches) {
+				closeMenu();
+			}
+		});
+	});
+
+	resetMenuForWideScreen();
+}
+
 function initializeTabSelectionPersistence() {
 	const siteNav = document.querySelector(".site-nav");
 	if (!siteNav) {
 		return;
 	}
 
+	initializeResponsiveMenu(siteNav);
 	applySavedSelectedTabTransform();
 	siteNav.addEventListener("click", saveSelectedTabTransform);
 
