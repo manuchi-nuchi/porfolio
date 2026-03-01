@@ -5,7 +5,7 @@
 
 /* #region Variables */
 :root {
-	color-scheme: light;
+	color-scheme: dark;
 	--amplitude-x: 5px;
 	--amplitude-y: 6px;
 	--frequency-x: 1.8541;
@@ -24,6 +24,17 @@
 	--button-phase-x: 0deg;
 	--button-phase-y: 0deg;
 	--button-tilt-angle: 0deg;
+	--tab-amplitude-x: 1.2px;
+	--tab-amplitude-y: 1.8px;
+	--tab-frequency-x: 1.41;
+	--tab-frequency-y: 1.19;
+	--tab-speed-x: 1.8s;
+	--tab-speed-y: 1.5s;
+	--tab-phase-x: 0deg;
+	--tab-phase-y: 0deg;
+	--tab-phase-start-x: 0deg;
+	--tab-phase-start-y: 0deg;
+	--tab-tilt-angle: 0deg;
 }
 /* #endregion */
 
@@ -59,6 +70,24 @@
 }
 
 @property --button-tilt-angle {
+	syntax: "<angle>";
+	inherits: false;
+	initial-value: 0deg;
+}
+
+@property --tab-phase-x {
+	syntax: "<angle>";
+	inherits: false;
+	initial-value: 0deg;
+}
+
+@property --tab-phase-y {
+	syntax: "<angle>";
+	inherits: false;
+	initial-value: 0deg;
+}
+
+@property --tab-tilt-angle {
 	syntax: "<angle>";
 	inherits: false;
 	initial-value: 0deg;
@@ -131,21 +160,178 @@
 		--button-tilt-angle: 0deg;
 	}
 }
+
+@keyframes tab-phase-x-loop {
+	0% {
+		--tab-phase-x: var(--tab-phase-start-x, 0deg);
+	}
+	100% {
+		--tab-phase-x: calc(var(--tab-phase-start-x, 0deg) + 360deg);
+	}
+}
+
+@keyframes tab-phase-y-loop {
+	0% {
+		--tab-phase-y: var(--tab-phase-start-y, 0deg);
+	}
+	100% {
+		--tab-phase-y: calc(var(--tab-phase-start-y, 0deg) + 360deg);
+	}
+}
+
+@keyframes tab-tilt-loop {
+	0% {
+		--tab-tilt-angle: 0deg;
+	}
+	25% {
+		--tab-tilt-angle: 4deg;
+	}
+	75% {
+		--tab-tilt-angle: -4deg;
+	}
+	100% {
+		--tab-tilt-angle: 0deg;
+	}
+}
+
+@keyframes tab-select-in {
+	0% {
+		background-color: #ffffff;
+		transform: translate(
+			var(--active-tab-translate-x, 0px),
+			var(--active-tab-translate-y, 0px)
+		) rotate(var(--active-tab-rotation-clicked, var(--active-tab-rotation, 0deg))) scale(1);
+	}
+	100% {
+		background-color: hsl(var(--active-tab-hue, 0) 100% 45%);
+		transform: translate(
+			var(--active-tab-translate-x, 0px),
+			var(--active-tab-translate-y, 0px)
+		) rotate(var(--active-tab-rotation-clicked, var(--active-tab-rotation, 0deg))) scale(1.2);
+	}
+}
 /* #endregion */
 
 
 body {
 	margin: 0;
 	min-height: 100vh;
-	padding: 3rem 1.25rem;
+	padding: 5.25rem 1.25rem 3rem;
 	font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
 	line-height: 1.7;
-	color: #1f2937;
-	background: linear-gradient(135deg, #f8fbff 0%, #eaf4ff 100%);
+	color: #ffffff;
+	background: #000000;
 	display: grid;
 	place-items: center;
 	gap: 1rem;
 }
+
+/* #region Navigation */
+.site-nav {
+	position: fixed;
+	top: max(0.75rem, env(safe-area-inset-top));
+	left: 50%;
+	transform: translateX(-50%);
+	display: flex;
+	gap: 0.45rem;
+	padding: 0.45rem;
+	border: 1px solid #2f2f2f;
+	border-radius: 999px;
+	background: #111111;
+	box-shadow: 0 10px 24px rgba(0, 0, 0, 0.45);
+	z-index: 1000;
+	flex-wrap: wrap;
+	justify-content: center;
+}
+
+.site-nav a {
+	text-decoration: none;
+	color: #ffffff;
+	font-weight: 600;
+	font-size: 0.92rem;
+	padding: 0.4rem 0.8rem;
+	border-radius: 999px;
+	position: relative;
+	z-index: 0;
+	transition: color 140ms ease;
+}
+
+.site-nav a::before {
+	content: "";
+	position: absolute;
+	inset: 0;
+	border-radius: 999px;
+	background-color: transparent;
+	transform: translate(
+		calc(var(--tab-amplitude-x) * sin(var(--tab-phase-x))),
+		calc(var(--tab-amplitude-y) * sin(var(--tab-phase-y)))
+	) rotate(var(--tab-tilt-angle));
+	transform-origin: center;
+	z-index: -1;
+	pointer-events: none;
+	transition: background-color 0.2s ease-in-out, transform 0.2s ease-in-out;
+}
+
+.site-nav a:not(.active):hover::before {
+	background-color: #ffffff;
+	animation:
+		tab-phase-x-loop calc(var(--tab-speed-x) / var(--tab-frequency-x)) linear infinite,
+		tab-phase-y-loop calc(var(--tab-speed-y) / var(--tab-frequency-y)) linear infinite,
+		tab-tilt-loop 1.8s ease-in-out infinite;
+}
+
+.site-nav a:not(.active):hover {
+	color: #000000;
+}
+
+.site-nav a.active {
+	color: #ffffff;
+	text-shadow:
+		-1px 0 0 #000000,
+		1px 0 0 #000000,
+		0 -1px 0 #000000,
+		0 1px 0 #000000;
+}
+
+.site-nav a.active::before {
+	background-color: hsl(var(--active-tab-hue, 0) 100% 45%);
+	transform: translate(
+		var(--active-tab-translate-x, 0px),
+		var(--active-tab-translate-y, 0px)
+	) rotate(var(--active-tab-rotation-clicked, var(--active-tab-rotation, 0deg))) scale(1.2);
+	animation: tab-select-in 0.2s ease-in-out both;
+}
+
+.site-nav a:nth-child(1) {
+	--active-tab-hue: 318;
+	--active-tab-rotation: -3.2deg;
+}
+
+.site-nav a:nth-child(2) {
+	--active-tab-hue: 42;
+	--active-tab-rotation: 2.6deg;
+}
+
+.site-nav a:nth-child(3) {
+	--active-tab-hue: 196;
+	--active-tab-rotation: -2.1deg;
+}
+
+.site-nav a:nth-child(4) {
+	--active-tab-hue: 126;
+	--active-tab-rotation: 3.4deg;
+}
+
+.site-nav a:nth-child(5) {
+	--active-tab-hue: 274;
+	--active-tab-rotation: -2.8deg;
+}
+
+.site-nav a:nth-child(6) {
+	--active-tab-hue: 8;
+	--active-tab-rotation: 2.2deg;
+}
+/* #endregion */
 
 /* #region Card */
 main {
@@ -159,10 +345,10 @@ main::before {
 	content: "";
 	position: absolute;
 	inset: 0;
-	background: #ffffff;
+	background: #111111;
 	border-radius: 20px;
-	box-shadow: 0 16px 40px rgba(15, 23, 42, 0.12);
-	border: 1px solid #e5e7eb;
+	box-shadow: 0 16px 40px rgba(0, 0, 0, 0.55);
+	border: 1px solid #2f2f2f;
 	transform-origin: center;
 	transform: translate(
 		calc(var(--amplitude-x) * sin(var(--phase-x))),
@@ -185,12 +371,12 @@ h1 {
 	margin: 0 0 1.25rem;
 	font-size: clamp(1.8rem, 3.2vw, 2.5rem);
 	line-height: 1.2;
-	color: #0f172a;
+	color: #ffffff;
 }
 
 p {
 	margin: 0;
-	color: #374151;
+	color: #e5e7eb;
 }
 
 p + p {
@@ -214,7 +400,7 @@ p + p {
 .paragraph-button {
 	border: 0;
 	background: transparent;
-	color: #0f172a;
+	color: #ffffff;
 	font: inherit;
 	font-weight: 600;
 	padding: 0.7rem 1.1rem;
@@ -229,10 +415,10 @@ p + p {
 	content: "";
 	position: absolute;
 	inset: 0;
-	border: 1px solid #cbd5e1;
-	background: #ffffff;
+	border: 1px solid #3f3f46;
+	background: #111111;
 	border-radius: 15px;
-	box-shadow: 0 8px 20px rgba(15, 23, 42, 0.08);
+	box-shadow: 0 8px 20px rgba(0, 0, 0, 0.45);
 	transform: translate(
 		calc(var(--button-amplitude-x) * sin(var(--button-phase-x))),
 		calc(var(--button-amplitude-y) * sin(var(--button-phase-y)))
@@ -249,11 +435,11 @@ p + p {
 		button-phase-x-loop calc(var(--button-speed-x) / var(--button-frequency-x)) linear infinite,
 		button-phase-y-loop calc(var(--button-speed-y) / var(--button-frequency-y)) linear infinite,
 		button-tilt-loop 1.9s ease-in-out infinite;
-	box-shadow: 0 10px 24px rgba(15, 23, 42, 0.12);
+	box-shadow: 0 10px 24px rgba(0, 0, 0, 0.6);
 }
 
 #paragraph-controls > button:active::before,
 .paragraph-button:active::before {
-	box-shadow: 0 7px 16px rgba(15, 23, 42, 0.1);
+	box-shadow: 0 7px 16px rgba(0, 0, 0, 0.45);
 }
 /* #endregion */
