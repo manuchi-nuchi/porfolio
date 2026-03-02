@@ -9,6 +9,8 @@ const TAB_ROTATION_MAX = 5;
 const TAB_PRESS_TRANSLATE_X_MAX = 2;
 const TAB_PRESS_TRANSLATE_Y_MAX = 3;
 const TAB_PROXIMITY_SELECT_DISTANCE_PX = 60;
+const TAB_PROXIMITY_BUBBLE_RESET_DISTANCE_PX = 90;
+const TAB_PROXIMITY_BUBBLE_RESET_DELAY_MS = 300;
 const TAP_NAV_DELAY_MS = 140;
 const MOBILE_MENU_BREAKPOINT = 1000;
 const MIN_ZOOM = 0.7;
@@ -24,6 +26,8 @@ const PLAYER_BULLET_SIZE_PX = 6;
 const PLAYER_BULLET_OFFSET_FROM_VISUALS_PX = 2;
 const PLAYER_BULLET_SPEED_PX_PER_SECOND = 2000;
 const PLAYER_BULLET_RECOIL_SPEED_DELTA_PX_PER_SECOND = 120;
+const PLAYER_INTERACT_BUBBLE_RADIUS_FROM_PLAYER_PX = 50;
+const PLAYER_BUBBLE_SUPPRESSION_KEY = "playerBubbleSuppressedUntilLeave";
 const PLAYER_INPUT_CARRY_STATE_KEY = "playerInputCarryState";
 const PLAYER_INPUT_CARRY_MAX_AGE_MS = 2000;
 const BOTTOM_SQUARE_RUNNER_SPEED_PX_PER_SECOND = 100;
@@ -289,12 +293,15 @@ function initializeTabSelectionPersistence() {
 	initializeResponsiveMenu(siteNav);
 	applySavedSelectedTabTransform();
 	siteNav.addEventListener("click", saveSelectedTabTransform);
+	window.isPlayerNearTab = false;
+	window.isPlayerBubbleSuppressed = readStorageItem(sessionStorage, PLAYER_BUBBLE_SUPPRESSION_KEY) === "1";
 
 	const tabs = Array.from(siteNav.querySelectorAll("a"));
 	const secretTab = tabs.find((tab) => tab.classList.contains("secret-tab")) ?? null;
 	let pressedKeyboardDigit = null;
 	let pressedKeyboardTab = null;
 	let proximitySelectedTab = null;
+	let bubbleSuppressionNeedsLeave = window.isPlayerBubbleSuppressed === true;
 	let activeReplayToggle = false;
 
 	const applyRandomTabPhaseSeed = (tab) => {
@@ -379,12 +386,13 @@ function initializeTabSelectionPersistence() {
 		}, TAP_NAV_DELAY_MS);
 	};
 
-	const clearProximitySelectedTab = () => {
+	const clearProximitySelectedTab = (options = {}) => {
 		if (proximitySelectedTab instanceof HTMLAnchorElement) {
 			proximitySelectedTab.classList.remove("proximity-hover");
 		}
 
 		proximitySelectedTab = null;
+		window.isPlayerNearTab = false;
 	};
 
 	const updateProximitySelectedTab = (centerX, centerY) => {
@@ -417,10 +425,16 @@ function initializeTabSelectionPersistence() {
 
 		if (nearestDistance > TAB_PROXIMITY_SELECT_DISTANCE_PX || !(nextTab instanceof HTMLAnchorElement)) {
 			clearProximitySelectedTab();
+			if (window.isPlayerBubbleSuppressed === true && bubbleSuppressionNeedsLeave) {
+				bubbleSuppressionNeedsLeave = false;
+				window.isPlayerBubbleSuppressed = false;
+				removeStorageItem(sessionStorage, PLAYER_BUBBLE_SUPPRESSION_KEY);
+			}
 			return;
 		}
 
 		if (proximitySelectedTab === nextTab) {
+			window.isPlayerNearTab = true;
 			return;
 		}
 
@@ -430,6 +444,7 @@ function initializeTabSelectionPersistence() {
 		applyRandomTabPhaseSeed(nextTab);
 
 		nextTab.classList.add("proximity-hover");
+		window.isPlayerNearTab = true;
 	};
 
 	window.updateTabProximityFromPlayerVisuals = updateProximitySelectedTab;
@@ -571,6 +586,14 @@ function initializeTabSelectionPersistence() {
 			}
 
 			event.preventDefault();
+			window.isPlayerBubbleSuppressed = true;
+			bubbleSuppressionNeedsLeave = true;
+			writeStorageItem(sessionStorage, PLAYER_BUBBLE_SUPPRESSION_KEY, "1");
+			window.isPlayerNearTab = false;
+			const bubbleElement = document.querySelector(".player-interact-bubble");
+			if (bubbleElement instanceof HTMLElement) {
+				bubbleElement.classList.remove("visible");
+			}
 			jumpToTab(proximitySelectedTab, { allowSecretTab: true });
 			return;
 		}
@@ -858,6 +881,24 @@ function initializePlayerMovement(player, runnerSquare) {
 	let restoredCarryExpiresAtMs = 0;
 	const playerVisuals = player.querySelector(".player-visuals");
 	const activeBullets = [];
+	let playerInteractBubbleAngleRad = 0;
+	let hasPlayerInteractBubbleAnchor = false;
+	const playerInteractBubble = (() => {
+		const existingBubble = document.querySelector(".player-interact-bubble");
+		if (existingBubble instanceof HTMLElement) {
+			return existingBubble;
+		}
+
+		if (!document.body) {
+			return null;
+		}
+
+		const bubble = document.createElement("div");
+		bubble.className = "player-interact-bubble";
+		bubble.textContent = "e";
+		document.body.append(bubble);
+		return bubble;
+	})();
 
 	const saveInputCarryState = () => {
 		if (activeKeys.size === 0) {
@@ -911,6 +952,43 @@ function initializePlayerMovement(player, runnerSquare) {
 			}
 		} catch {
 		}
+	};
+
+	const hidePlayerInteractBubble = () => {
+		if (!(playerInteractBubble instanceof HTMLElement)) {
+			return;
+		}
+
+		playerInteractBubble.classList.remove("visible");
+		hasPlayerInteractBubbleAnchor = false;
+	};
+
+	const updatePlayerInteractBubble = (playerCenterX, playerCenterY, visualsCenterX, visualsCenterY) => {
+		if (!(playerInteractBubble instanceof HTMLElement)) {
+			return;
+		}
+
+		if (window.isPlayerNearTab !== true || window.isPlayerBubbleSuppressed === true) {
+			hidePlayerInteractBubble();
+			return;
+		}
+
+		if (!hasPlayerInteractBubbleAnchor) {
+			playerInteractBubbleAngleRad = Math.random() * Math.PI * 2;
+			hasPlayerInteractBubbleAnchor = true;
+		}
+
+		playerInteractBubble.classList.add("visible");
+		const bubbleRect = playerInteractBubble.getBoundingClientRect();
+		const bubbleCenterX = playerCenterX + Math.cos(playerInteractBubbleAngleRad) * PLAYER_INTERACT_BUBBLE_RADIUS_FROM_PLAYER_PX;
+		const bubbleCenterY = playerCenterY + Math.sin(playerInteractBubbleAngleRad) * PLAYER_INTERACT_BUBBLE_RADIUS_FROM_PLAYER_PX;
+		const bubbleX = bubbleCenterX - bubbleRect.width / 2;
+		const bubbleY = bubbleCenterY - bubbleRect.height / 2;
+		playerInteractBubble.style.transform = `translate(${bubbleX}px, ${bubbleY}px)`;
+
+		const pointerAngleDeg =
+			(Math.atan2(visualsCenterY - bubbleCenterY, visualsCenterX - bubbleCenterX) * 180) / Math.PI;
+		playerInteractBubble.style.setProperty("--player-bubble-pointer-angle", `${pointerAngleDeg}deg`);
 	};
 
 	const spawnBullet = (directionX, directionY) => {
@@ -1255,11 +1333,19 @@ function initializePlayerMovement(player, runnerSquare) {
 		clampPositionWithinViewport();
 
 		if (typeof window.updateTabProximityFromPlayerVisuals === "function" && playerVisuals instanceof HTMLElement) {
+			const playerBounds = player.getBoundingClientRect();
+			const playerCenterX = playerBounds.left + playerBounds.width / 2;
+			const playerCenterY = playerBounds.top + playerBounds.height / 2;
 			const visualsBounds = playerVisuals.getBoundingClientRect();
+			const visualsCenterX = visualsBounds.left + visualsBounds.width / 2;
+			const visualsCenterY = visualsBounds.top + visualsBounds.height / 2;
 			window.updateTabProximityFromPlayerVisuals(
-				visualsBounds.left + visualsBounds.width / 2,
-				visualsBounds.top + visualsBounds.height / 2,
+				visualsCenterX,
+				visualsCenterY,
 			);
+			updatePlayerInteractBubble(playerCenterX, playerCenterY, visualsCenterX, visualsCenterY);
+		} else {
+			hidePlayerInteractBubble();
 		}
 
 		savePlayerState();

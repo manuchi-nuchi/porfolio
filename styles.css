@@ -355,6 +355,7 @@ body {
 	height: 34px;
 	border-radius: 999px;
 	background: #ffffff;
+	border: 1px solid #000000;
 	z-index: 1;
 	transform: translate(-50%, -50%);
 	animation: player-visuals-wiggle 2.1s ease-in-out infinite;
@@ -371,6 +372,56 @@ body {
 	pointer-events: none;
 	z-index: 1003;
 	will-change: transform;
+}
+
+.player-interact-bubble {
+	position: fixed;
+	left: 0;
+	top: 0;
+	width: 34px;
+	height: 34px;
+	padding: 0 0 6px;
+	border-radius: 999px;
+	background: #000000;
+	border: none;
+	color: #ffffff;
+	font-size: 1rem;
+	font-weight: 700;
+	line-height: 1;
+	text-align: center;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	pointer-events: none;
+	z-index: 1004;
+	opacity: 0;
+	visibility: hidden;
+	will-change: transform;
+	isolation: isolate;
+	filter:
+		drop-shadow(1px 0 0 #ffffff)
+		drop-shadow(-1px 0 0 #ffffff)
+		drop-shadow(0 1px 0 #ffffff)
+		drop-shadow(0 -1px 0 #ffffff);
+}
+
+.player-interact-bubble.visible {
+	opacity: 1;
+	visibility: visible;
+}
+
+.player-interact-bubble::after {
+	content: "";
+	position: absolute;
+	left: 50%;
+	top: 50%;
+	width: 22px;
+	height: 24px;
+	background: #000000;
+	clip-path: polygon(0 0, 100% 0, 50% 100%);
+	transform: translate(-50%, 0) rotate(calc(var(--player-bubble-pointer-angle, 90deg) - 90deg));
+	transform-origin: 50% 0%;
+	z-index: -1;
 }
 
 @supports (transform: translate(calc(1px * sin(1deg)), calc(1px * sin(1deg)))) {
