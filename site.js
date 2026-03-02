@@ -13,6 +13,12 @@ const MOBILE_MENU_BREAKPOINT = 860;
 const MIN_ZOOM = 0.7;
 const MAX_ZOOM = 2;
 const ZOOM_STEP = 0.1;
+const BOTTOM_CIRCLE_MOVE_SPEED_PX_PER_SECOND = 400;
+const BOTTOM_CIRCLE_ACCELERATION_PX_PER_SECOND_SQUARED = 800;
+const BOTTOM_CIRCLE_DECELERATION_PX_PER_SECOND_SQUARED = 300;
+const BOTTOM_CIRCLE_SEEK_MAX_SPEED_PX_PER_SECOND = 140;
+const BOTTOM_CIRCLE_SEEK_ACCELERATION_PX_PER_SECOND_SQUARED = 220;
+const BOTTOM_CIRCLE_SEEK_IDLE_DELAY_MS = 2000;
 
 function clampZoom(level) {
 	return Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, level));
@@ -304,10 +310,255 @@ function initializeTabSelectionPersistence() {
 	});
 }
 
+function initializeBottomCircleDecoration() {
+	if (!document.body) {
+		return null;
+	}
+
+	const existingCircle = document.querySelector(".bottom-circle-parent");
+	if (existingCircle instanceof HTMLElement) {
+		return existingCircle;
+	}
+
+	const parentCircle = document.createElement("div");
+	parentCircle.className = "bottom-circle-parent";
+	parentCircle.setAttribute("aria-hidden", "true");
+
+	const childCircle = document.createElement("div");
+	childCircle.className = "bottom-circle-child";
+	parentCircle.append(childCircle);
+
+	document.body.append(parentCircle);
+	return parentCircle;
+}
+
+function initializeBottomSquareRunner() {
+	if (!document.body) {
+		return null;
+	}
+
+	const existingSquare = document.querySelector(".bottom-square-runner");
+	if (existingSquare instanceof HTMLElement) {
+		return existingSquare;
+	}
+
+	const runnerSquare = document.createElement("div");
+	runnerSquare.className = "bottom-square-runner";
+	runnerSquare.setAttribute("aria-hidden", "true");
+	document.body.append(runnerSquare);
+	return runnerSquare;
+}
+
+function initializeBottomCircleMovement(parentCircle, runnerSquare) {
+	if (!(parentCircle instanceof HTMLElement)) {
+		return;
+	}
+
+	let offsetX = 0;
+	let offsetY = 0;
+	let velocityX = 0;
+	let velocityY = 0;
+	let animationFrameId = 0;
+	let lastTimestampMs = 0;
+	let lastDirectionalInputTimestampMs = performance.now();
+	let hasReceivedDirectionalInput = false;
+	const activeKeys = new Set();
+
+	const isEditableTarget = (target) => {
+		if (!(target instanceof HTMLElement)) {
+			return false;
+		}
+
+		if (target.isContentEditable) {
+			return true;
+		}
+
+		const editableTags = ["INPUT", "TEXTAREA", "SELECT"];
+		return editableTags.includes(target.tagName);
+	};
+
+	const applyPosition = () => {
+		parentCircle.style.transform = `translate(calc(-50% + ${offsetX}px), ${offsetY}px)`;
+	};
+
+	const moveToward = (currentValue, targetValue, maxDelta) => {
+		const delta = targetValue - currentValue;
+		if (Math.abs(delta) <= maxDelta) {
+			return targetValue;
+		}
+
+		return currentValue + Math.sign(delta) * maxDelta;
+	};
+
+	const alignParentWithSquareStart = () => {
+		if (!(runnerSquare instanceof HTMLElement)) {
+			return;
+		}
+
+		const parentRect = parentCircle.getBoundingClientRect();
+		const squareRect = runnerSquare.getBoundingClientRect();
+		const parentCenterX = parentRect.left + parentRect.width / 2;
+		const parentCenterY = parentRect.top + parentRect.height / 2;
+		const squareCenterX = squareRect.left + squareRect.width / 2;
+		const squareCenterY = squareRect.top + squareRect.height / 2;
+
+		offsetX += squareCenterX - parentCenterX;
+		offsetY += squareCenterY - parentCenterY;
+		applyPosition();
+	};
+
+	const getDirection = () => {
+		const moveLeft = activeKeys.has("a");
+		const moveRight = activeKeys.has("d");
+		const moveUp = activeKeys.has("w");
+		const moveDown = activeKeys.has("s");
+
+		let directionX = 0;
+		let directionY = 0;
+
+		if (moveLeft && !moveRight) {
+			directionX = -1;
+		} else if (moveRight && !moveLeft) {
+			directionX = 1;
+		}
+
+		if (moveUp && !moveDown) {
+			directionY = -1;
+		} else if (moveDown && !moveUp) {
+			directionY = 1;
+		}
+
+		return { directionX, directionY };
+	};
+
+	const step = (timestampMs) => {
+		if (lastTimestampMs === 0) {
+			lastTimestampMs = timestampMs;
+		}
+
+		const elapsedSeconds = Math.min(50, timestampMs - lastTimestampMs) / 1000;
+		lastTimestampMs = timestampMs;
+
+		const { directionX, directionY } = getDirection();
+		const hasDirectionalInput = directionX !== 0 || directionY !== 0;
+		if (hasDirectionalInput) {
+			hasReceivedDirectionalInput = true;
+			lastDirectionalInputTimestampMs = timestampMs;
+		}
+
+		const isSeekDelayElapsed = timestampMs - lastDirectionalInputTimestampMs >= BOTTOM_CIRCLE_SEEK_IDLE_DELAY_MS;
+		const shouldSeekSquare =
+			!hasDirectionalInput && (!hasReceivedDirectionalInput || isSeekDelayElapsed);
+		let targetVelocityX = 0;
+		let targetVelocityY = 0;
+
+		if (hasDirectionalInput) {
+			const directionMagnitude = Math.hypot(directionX, directionY) || 1;
+			const normalizedDirectionX = directionX / directionMagnitude;
+			const normalizedDirectionY = directionY / directionMagnitude;
+
+			targetVelocityX = normalizedDirectionX * BOTTOM_CIRCLE_MOVE_SPEED_PX_PER_SECOND;
+			targetVelocityY = normalizedDirectionY * BOTTOM_CIRCLE_MOVE_SPEED_PX_PER_SECOND;
+		} else if (shouldSeekSquare && runnerSquare instanceof HTMLElement) {
+			const parentRect = parentCircle.getBoundingClientRect();
+			const squareRect = runnerSquare.getBoundingClientRect();
+			const parentCenterX = parentRect.left + parentRect.width / 2;
+			const parentCenterY = parentRect.top + parentRect.height / 2;
+			const squareCenterX = squareRect.left + squareRect.width / 2;
+			const squareCenterY = squareRect.top + squareRect.height / 2;
+
+			const deltaX = squareCenterX - parentCenterX;
+			const deltaY = squareCenterY - parentCenterY;
+			const distance = Math.hypot(deltaX, deltaY);
+
+			if (distance > 0.5) {
+				const seekDirectionX = deltaX / distance;
+				const seekDirectionY = deltaY / distance;
+				const seekSpeed = Math.min(BOTTOM_CIRCLE_SEEK_MAX_SPEED_PX_PER_SECOND, distance * 1.6);
+				targetVelocityX = seekDirectionX * seekSpeed;
+				targetVelocityY = seekDirectionY * seekSpeed;
+			}
+		}
+
+		const accelerationPerFrame = BOTTOM_CIRCLE_ACCELERATION_PX_PER_SECOND_SQUARED * elapsedSeconds;
+		const decelerationPerFrame = BOTTOM_CIRCLE_DECELERATION_PX_PER_SECOND_SQUARED * elapsedSeconds;
+		const seekAccelerationPerFrame = BOTTOM_CIRCLE_SEEK_ACCELERATION_PX_PER_SECOND_SQUARED * elapsedSeconds;
+
+		let velocityStepX = decelerationPerFrame;
+		let velocityStepY = decelerationPerFrame;
+
+		if (hasDirectionalInput) {
+			velocityStepX = accelerationPerFrame;
+			velocityStepY = accelerationPerFrame;
+		} else if (shouldSeekSquare && runnerSquare instanceof HTMLElement) {
+			velocityStepX = seekAccelerationPerFrame;
+			velocityStepY = seekAccelerationPerFrame;
+		}
+
+		velocityX = moveToward(velocityX, targetVelocityX, velocityStepX);
+		velocityY = moveToward(velocityY, targetVelocityY, velocityStepY);
+
+		offsetX += velocityX * elapsedSeconds;
+		offsetY += velocityY * elapsedSeconds;
+		applyPosition();
+
+		animationFrameId = window.requestAnimationFrame(step);
+	};
+
+	const ensureAnimationLoop = () => {
+		if (animationFrameId !== 0) {
+			return;
+		}
+
+		animationFrameId = window.requestAnimationFrame(step);
+	};
+
+	const handleKeyDown = (event) => {
+		if (event.ctrlKey || event.altKey || event.metaKey || isEditableTarget(event.target)) {
+			return;
+		}
+
+		const key = event.key.toLowerCase();
+		if (key !== "w" && key !== "a" && key !== "s" && key !== "d") {
+			return;
+		}
+
+		event.preventDefault();
+		activeKeys.add(key);
+		ensureAnimationLoop();
+	};
+
+	const handleKeyUp = (event) => {
+		const key = event.key.toLowerCase();
+		if (key !== "w" && key !== "a" && key !== "s" && key !== "d") {
+			return;
+		}
+
+		activeKeys.delete(key);
+	};
+
+	const handleWindowBlur = () => {
+		activeKeys.clear();
+	};
+
+	document.addEventListener("keydown", handleKeyDown);
+	document.addEventListener("keyup", handleKeyUp);
+	window.addEventListener("blur", handleWindowBlur);
+	alignParentWithSquareStart();
+	ensureAnimationLoop();
+}
+
+function initializeSiteUi() {
+	const parentCircle = initializeBottomCircleDecoration();
+	const runnerSquare = initializeBottomSquareRunner();
+	initializeBottomCircleMovement(parentCircle, runnerSquare);
+	initializeTabSelectionPersistence();
+}
+
 initializeZoomPersistence();
 
 if (document.readyState === "loading") {
-	document.addEventListener("DOMContentLoaded", initializeTabSelectionPersistence);
+	document.addEventListener("DOMContentLoaded", initializeSiteUi);
 } else {
-	initializeTabSelectionPersistence();
+	initializeSiteUi();
 }
