@@ -329,14 +329,21 @@ body {
 	border-radius: 999px;
 	background: #ffffff;
 	z-index: 1;
-	transform: translate(-50%, -50%)
-		translate(
-			calc(var(--child-amplitude-x) * sin(var(--child-phase-x))),
-			calc(var(--child-amplitude-y) * sin(var(--child-phase-y)))
-		);
-	animation:
-		child-phase-x-loop calc(var(--child-speed-x) / var(--child-frequency-x)) linear infinite,
-		child-phase-y-loop calc(var(--child-speed-y) / var(--child-frequency-y)) linear infinite;
+	transform: translate(-50%, -50%);
+	animation: bottom-circle-child-wiggle 2.1s ease-in-out infinite;
+}
+
+@supports (transform: translate(calc(1px * sin(1deg)), calc(1px * sin(1deg)))) {
+	.bottom-circle-child {
+		transform: translate(-50%, -50%)
+			translate(
+				calc(var(--child-amplitude-x) * sin(var(--child-phase-x))),
+				calc(var(--child-amplitude-y) * sin(var(--child-phase-y)))
+			);
+		animation:
+			child-phase-x-loop calc(var(--child-speed-x) / var(--child-frequency-x)) linear infinite,
+			child-phase-y-loop calc(var(--child-speed-y) / var(--child-frequency-y)) linear infinite;
+	}
 }
 
 .bottom-square-runner {
