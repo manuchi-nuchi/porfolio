@@ -23,12 +23,34 @@ const BOTTOM_SQUARE_RUNNER_SPEED_PX_PER_SECOND = 100;
 const BOTTOM_SQUARE_RUNNER_STATE_KEY = "bottomSquareRunnerState";
 const BOTTOM_CIRCLE_STATE_KEY = "bottomCircleState";
 
+function readStorageItem(storage, key) {
+	try {
+		return storage.getItem(key);
+	} catch {
+		return null;
+	}
+}
+
+function writeStorageItem(storage, key, value) {
+	try {
+		storage.setItem(key, value);
+	} catch {
+	}
+}
+
+function removeStorageItem(storage, key) {
+	try {
+		storage.removeItem(key);
+	} catch {
+	}
+}
+
 function clampZoom(level) {
 	return Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, level));
 }
 
 function readSavedZoom() {
-	const rawValue = localStorage.getItem(ZOOM_STORAGE_KEY);
+	const rawValue = readStorageItem(localStorage, ZOOM_STORAGE_KEY);
 	const parsedValue = Number.parseFloat(rawValue ?? "1");
 
 	if (Number.isNaN(parsedValue)) {
@@ -42,7 +64,7 @@ function applyZoom(level) {
 	const normalizedLevel = clampZoom(level);
 	document.documentElement.style.zoom = "";
 	document.documentElement.style.fontSize = `${normalizedLevel * 150}%`;
-	localStorage.setItem(ZOOM_STORAGE_KEY, String(normalizedLevel));
+	writeStorageItem(localStorage, ZOOM_STORAGE_KEY, String(normalizedLevel));
 }
 
 function initializeZoomPersistence() {
@@ -110,20 +132,20 @@ function saveSelectedTabTransform(event) {
 	const transformValue = currentTransform && currentTransform !== "none" ? currentTransform : "matrix(1, 0, 0, 1, 0, 0)";
 
 	const destinationPath = getTabPathFromLink(clickedTab);
-	sessionStorage.setItem(`${TAB_TRANSFORM_STORAGE_PREFIX}${destinationPath}`, transformValue);
+	writeStorageItem(sessionStorage, `${TAB_TRANSFORM_STORAGE_PREFIX}${destinationPath}`, transformValue);
 
 	if (clickedTab.classList.contains("active")) {
 		const randomRotation = Math.random() * (TAB_ROTATION_MAX - TAB_ROTATION_MIN) + TAB_ROTATION_MIN;
-		sessionStorage.setItem(NEXT_TAB_ROTATION_KEY, `${randomRotation}deg`);
-		sessionStorage.setItem(NEXT_TAB_ROTATION_PATH_KEY, destinationPath);
+		writeStorageItem(sessionStorage, NEXT_TAB_ROTATION_KEY, `${randomRotation}deg`);
+		writeStorageItem(sessionStorage, NEXT_TAB_ROTATION_PATH_KEY, destinationPath);
 	} else {
-		sessionStorage.removeItem(NEXT_TAB_ROTATION_KEY);
-		sessionStorage.removeItem(NEXT_TAB_ROTATION_PATH_KEY);
+		removeStorageItem(sessionStorage, NEXT_TAB_ROTATION_KEY);
+		removeStorageItem(sessionStorage, NEXT_TAB_ROTATION_PATH_KEY);
 	}
 
 	const randomHue = Math.floor(Math.random() * 360);
-	sessionStorage.setItem(NEXT_TAB_HUE_KEY, String(randomHue));
-	sessionStorage.setItem(NEXT_TAB_PATH_KEY, destinationPath);
+	writeStorageItem(sessionStorage, NEXT_TAB_HUE_KEY, String(randomHue));
+	writeStorageItem(sessionStorage, NEXT_TAB_PATH_KEY, destinationPath);
 }
 
 function applySavedSelectedTabTransform() {
@@ -133,35 +155,38 @@ function applySavedSelectedTabTransform() {
 	}
 
 	const activePath = getTabPathFromLink(activeTab);
-	const savedTransform = sessionStorage.getItem(`${TAB_TRANSFORM_STORAGE_PREFIX}${activePath}`);
+	const savedTransform = readStorageItem(sessionStorage, `${TAB_TRANSFORM_STORAGE_PREFIX}${activePath}`);
 	if (savedTransform && savedTransform !== "none") {
-		const matrix = new DOMMatrixReadOnly(savedTransform);
-		const rotationDegrees = (Math.atan2(matrix.b, matrix.a) * 180) / Math.PI;
-		const safeTranslateX = Number.isFinite(matrix.e) && Math.abs(matrix.e) < 200 ? matrix.e : 0;
-		const safeTranslateY = Number.isFinite(matrix.f) && Math.abs(matrix.f) < 200 ? matrix.f : 0;
+		try {
+			const matrix = new DOMMatrixReadOnly(savedTransform);
+			const rotationDegrees = (Math.atan2(matrix.b, matrix.a) * 180) / Math.PI;
+			const safeTranslateX = Number.isFinite(matrix.e) && Math.abs(matrix.e) < 200 ? matrix.e : 0;
+			const safeTranslateY = Number.isFinite(matrix.f) && Math.abs(matrix.f) < 200 ? matrix.f : 0;
 
-		activeTab.style.setProperty("--active-tab-translate-x", `${safeTranslateX}px`);
-		activeTab.style.setProperty("--active-tab-translate-y", `${safeTranslateY}px`);
-		activeTab.style.setProperty("--active-tab-rotation-clicked", `${rotationDegrees}deg`);
+			activeTab.style.setProperty("--active-tab-translate-x", `${safeTranslateX}px`);
+			activeTab.style.setProperty("--active-tab-translate-y", `${safeTranslateY}px`);
+			activeTab.style.setProperty("--active-tab-rotation-clicked", `${rotationDegrees}deg`);
+		} catch {
+		}
 	}
 
-	const savedHue = sessionStorage.getItem(NEXT_TAB_HUE_KEY);
-	const savedPath = sessionStorage.getItem(NEXT_TAB_PATH_KEY);
+	const savedHue = readStorageItem(sessionStorage, NEXT_TAB_HUE_KEY);
+	const savedPath = readStorageItem(sessionStorage, NEXT_TAB_PATH_KEY);
 	if (!savedHue || savedPath !== activePath) {
 		return;
 	}
 
-	const savedRotation = sessionStorage.getItem(NEXT_TAB_ROTATION_KEY);
-	const savedRotationPath = sessionStorage.getItem(NEXT_TAB_ROTATION_PATH_KEY);
+	const savedRotation = readStorageItem(sessionStorage, NEXT_TAB_ROTATION_KEY);
+	const savedRotationPath = readStorageItem(sessionStorage, NEXT_TAB_ROTATION_PATH_KEY);
 	if (savedRotation && savedRotationPath === activePath) {
 		activeTab.style.setProperty("--active-tab-rotation-clicked", savedRotation);
-		sessionStorage.removeItem(NEXT_TAB_ROTATION_KEY);
-		sessionStorage.removeItem(NEXT_TAB_ROTATION_PATH_KEY);
+		removeStorageItem(sessionStorage, NEXT_TAB_ROTATION_KEY);
+		removeStorageItem(sessionStorage, NEXT_TAB_ROTATION_PATH_KEY);
 	}
 
 	activeTab.style.setProperty("--active-tab-hue", savedHue);
-	sessionStorage.removeItem(NEXT_TAB_HUE_KEY);
-	sessionStorage.removeItem(NEXT_TAB_PATH_KEY);
+	removeStorageItem(sessionStorage, NEXT_TAB_HUE_KEY);
+	removeStorageItem(sessionStorage, NEXT_TAB_PATH_KEY);
 }
 
 function initializeResponsiveMenu(siteNav) {
@@ -246,6 +271,17 @@ function initializeTabSelectionPersistence() {
 	let pressedKeyboardDigit = null;
 	let pressedKeyboardTab = null;
 
+	const applyRandomTabPhaseSeed = (tab) => {
+		const randomPhaseX = Math.random() * 360;
+		const randomPhaseY = Math.random() * 360;
+		const randomTiltDelaySeconds = -Math.random() * 1.8;
+		tab.style.setProperty("--tab-phase-start-x", `${randomPhaseX}deg`);
+		tab.style.setProperty("--tab-phase-start-y", `${randomPhaseY}deg`);
+		tab.style.setProperty("--tab-phase-x", `${randomPhaseX}deg`);
+		tab.style.setProperty("--tab-phase-y", `${randomPhaseY}deg`);
+		tab.style.setProperty("--tab-tilt-delay", `${randomTiltDelaySeconds}s`);
+	};
+
 	const applyKeyboardPressTilt = (tab) => {
 		const pressTilt = Math.random() * (TAB_ROTATION_MAX - TAB_ROTATION_MIN) + TAB_ROTATION_MIN;
 		const pressTranslateX = (Math.random() * 2 - 1) * TAB_PRESS_TRANSLATE_X_MAX;
@@ -253,8 +289,7 @@ function initializeTabSelectionPersistence() {
 		tab.style.setProperty("--tab-press-tilt", `${pressTilt}deg`);
 		tab.style.setProperty("--tab-press-translate-x", `${pressTranslateX}px`);
 		tab.style.setProperty("--tab-press-translate-y", `${pressTranslateY}px`);
-		tab.style.setProperty("--tab-phase-start-x", `${Math.floor(Math.random() * 360)}deg`);
-		tab.style.setProperty("--tab-phase-start-y", `${Math.floor(Math.random() * 360)}deg`);
+		applyRandomTabPhaseSeed(tab);
 		tab.classList.add("keyboard-pressed");
 	};
 
@@ -271,8 +306,7 @@ function initializeTabSelectionPersistence() {
 		let pressStartedFromTouch = false;
 
 		const randomizeStartPhase = () => {
-			tab.style.setProperty("--tab-phase-start-x", `${Math.floor(Math.random() * 360)}deg`);
-			tab.style.setProperty("--tab-phase-start-y", `${Math.floor(Math.random() * 360)}deg`);
+			applyRandomTabPhaseSeed(tab);
 		};
 
 		const applyRandomPressTilt = () => {
@@ -395,8 +429,8 @@ function initializeTabSelectionPersistence() {
 		event.preventDefault();
 		const randomRotation = Math.random() * (TAB_ROTATION_MAX - TAB_ROTATION_MIN) + TAB_ROTATION_MIN;
 		const destinationPath = getTabPathFromLink(tabToSelect);
-		sessionStorage.setItem(NEXT_TAB_ROTATION_KEY, `${randomRotation}deg`);
-		sessionStorage.setItem(NEXT_TAB_ROTATION_PATH_KEY, destinationPath);
+		writeStorageItem(sessionStorage, NEXT_TAB_ROTATION_KEY, `${randomRotation}deg`);
+		writeStorageItem(sessionStorage, NEXT_TAB_ROTATION_PATH_KEY, destinationPath);
 		tabToSelect.click();
 		setTimeout(() => {
 			tabToSelect.classList.remove("keyboard-pressed");
@@ -461,7 +495,7 @@ function initializeBottomSquareRunnerMovement(runnerSquare) {
 	let lastTimestampMs = 0;
 
 	const readSavedSquareState = () => {
-		const rawState = sessionStorage.getItem(BOTTOM_SQUARE_RUNNER_STATE_KEY);
+		const rawState = readStorageItem(sessionStorage, BOTTOM_SQUARE_RUNNER_STATE_KEY);
 		if (!rawState) {
 			return null;
 		}
@@ -490,7 +524,8 @@ function initializeBottomSquareRunnerMovement(runnerSquare) {
 	};
 
 	const saveSquareState = () => {
-		sessionStorage.setItem(
+		writeStorageItem(
+			sessionStorage,
 			BOTTOM_SQUARE_RUNNER_STATE_KEY,
 			JSON.stringify({
 				positionX: currentPositionX,
@@ -587,7 +622,7 @@ function initializeBottomCircleMovement(parentCircle, runnerSquare) {
 	const childCircle = parentCircle.querySelector(".bottom-circle-child");
 
 	const readSavedCircleState = () => {
-		const rawState = sessionStorage.getItem(BOTTOM_CIRCLE_STATE_KEY);
+		const rawState = readStorageItem(sessionStorage, BOTTOM_CIRCLE_STATE_KEY);
 		if (!rawState) {
 			return null;
 		}
@@ -676,7 +711,8 @@ function initializeBottomCircleMovement(parentCircle, runnerSquare) {
 
 	const saveCircleState = () => {
 		captureChildCircleState();
-		sessionStorage.setItem(
+		writeStorageItem(
+			sessionStorage,
 			BOTTOM_CIRCLE_STATE_KEY,
 			JSON.stringify({
 				offsetX,
@@ -706,6 +742,32 @@ function initializeBottomCircleMovement(parentCircle, runnerSquare) {
 
 	const applyPosition = () => {
 		parentCircle.style.transform = `translate(calc(-50% + ${offsetX}px), ${offsetY}px)`;
+	};
+
+	const clampPositionWithinViewport = () => {
+		const rect = parentCircle.getBoundingClientRect();
+		let adjustX = 0;
+		let adjustY = 0;
+
+		if (rect.right < 0) {
+			adjustX = -rect.right + 1;
+		} else if (rect.left > window.innerWidth) {
+			adjustX = window.innerWidth - rect.left - 1;
+		}
+
+		if (rect.bottom < 0) {
+			adjustY = -rect.bottom + 1;
+		} else if (rect.top > window.innerHeight) {
+			adjustY = window.innerHeight - rect.top - 1;
+		}
+
+		if (adjustX === 0 && adjustY === 0) {
+			return;
+		}
+
+		offsetX += adjustX;
+		offsetY += adjustY;
+		applyPosition();
 	};
 
 	const moveToward = (currentValue, targetValue, maxDelta) => {
@@ -828,6 +890,7 @@ function initializeBottomCircleMovement(parentCircle, runnerSquare) {
 		offsetX += velocityX * elapsedSeconds;
 		offsetY += velocityY * elapsedSeconds;
 		applyPosition();
+		clampPositionWithinViewport();
 		saveCircleState();
 
 		animationFrameId = window.requestAnimationFrame(step);
@@ -882,11 +945,17 @@ function initializeBottomCircleMovement(parentCircle, runnerSquare) {
 		childPhaseY = savedState.childPhaseY;
 		applySavedChildPhase();
 		applyPosition();
+		clampPositionWithinViewport();
 	}
 
 	document.addEventListener("keydown", handleKeyDown);
 	document.addEventListener("keyup", handleKeyUp);
 	window.addEventListener("blur", handleWindowBlur);
+	window.addEventListener("resize", () => {
+		applyPosition();
+		clampPositionWithinViewport();
+		saveCircleState();
+	});
 	window.addEventListener("pagehide", saveCircleState);
 	if (!hasRestoredCircleState) {
 		alignParentWithSquareStart();
@@ -898,12 +967,27 @@ function initializeBottomCircleMovement(parentCircle, runnerSquare) {
 function initializeSiteUi() {
 	const parentCircle = initializeBottomCircleDecoration();
 	const runnerSquare = initializeBottomSquareRunner();
-	initializeBottomSquareRunnerMovement(runnerSquare);
-	initializeBottomCircleMovement(parentCircle, runnerSquare);
-	initializeTabSelectionPersistence();
+
+	try {
+		initializeBottomSquareRunnerMovement(runnerSquare);
+	} catch {
+	}
+
+	try {
+		initializeBottomCircleMovement(parentCircle, runnerSquare);
+	} catch {
+	}
+
+	try {
+		initializeTabSelectionPersistence();
+	} catch {
+	}
 }
 
-initializeZoomPersistence();
+try {
+	initializeZoomPersistence();
+} catch {
+}
 
 if (document.readyState === "loading") {
 	document.addEventListener("DOMContentLoaded", initializeSiteUi);

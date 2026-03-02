@@ -34,6 +34,7 @@
 	--tab-phase-y: 0deg;
 	--tab-phase-start-x: 0deg;
 	--tab-phase-start-y: 0deg;
+	--tab-tilt-delay: 0s;
 	--tab-tilt-angle: 0deg;
 	--child-amplitude-x: 12px;
 	--child-amplitude-y: 12px;
@@ -468,6 +469,7 @@ body {
 		tab-phase-x-loop calc(var(--tab-speed-x) / var(--tab-frequency-x)) linear infinite,
 		tab-phase-y-loop calc(var(--tab-speed-y) / var(--tab-frequency-y)) linear infinite,
 		tab-tilt-loop 1.8s ease-in-out infinite;
+	animation-delay: 0s, 0s, var(--tab-tilt-delay, 0s);
 }
 
 .site-nav a:not(.active):hover {
@@ -541,6 +543,7 @@ body {
 		tab-phase-x-loop calc(var(--tab-speed-x) / var(--tab-frequency-x)) linear infinite,
 		tab-phase-y-loop calc(var(--tab-speed-y) / var(--tab-frequency-y)) linear infinite,
 		tab-tilt-loop 1.8s ease-in-out infinite;
+	animation-delay: 0s, 0s, var(--tab-tilt-delay, 0s);
 }
 
 .site-nav a.keyboard-pressed {
