@@ -521,6 +521,19 @@ body {
 	color: #ffffff;
 }
 
+.site-nav a.secret-tab.secret-touch-pressed::before {
+	background-color: #2f2f2f;
+	transform: translate(
+		var(--tab-press-translate-x, 0px),
+		var(--tab-press-translate-y, 0px)
+	) rotate(var(--tab-press-tilt, 0deg));
+	animation: none;
+}
+
+.site-nav a.secret-tab.secret-touch-pressed {
+	color: #ffffff;
+}
+
 .site-nav a.secret-tab.secret-release-fade::before {
 	transform: translate(
 		var(--tab-press-translate-x, 0px),

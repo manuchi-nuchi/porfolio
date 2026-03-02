@@ -239,6 +239,10 @@ function initializeResponsiveMenu(siteNav) {
 
 	siteNav.querySelectorAll("a").forEach((tabLink) => {
 		tabLink.addEventListener("click", () => {
+			if (tabLink.classList.contains("secret-tab")) {
+				return;
+			}
+
 			if (mobileMenuQuery.matches) {
 				closeMenu();
 			}
@@ -346,6 +350,13 @@ function initializeTabSelectionPersistence() {
 				return;
 			}
 
+				if (isSecretTab) {
+					pressStartedFromTouch = false;
+					applyRandomSecretHoverTilt();
+					tab.classList.add("secret-touch-pressed");
+					return;
+				}
+
 			pressStartedFromTouch = true;
 			applyRandomPressTilt();
 		};
@@ -356,10 +367,22 @@ function initializeTabSelectionPersistence() {
 				return;
 			}
 
+				if (isSecretTab) {
+					setTimeout(clearPressTilt, TAP_NAV_DELAY_MS);
+					return;
+				}
+
 			setTimeout(clearPressTilt, TAP_NAV_DELAY_MS);
 		};
 
 		const handleTouchStart = () => {
+				if (isSecretTab) {
+					pressStartedFromTouch = false;
+					applyRandomSecretHoverTilt();
+					tab.classList.add("secret-touch-pressed");
+					return;
+				}
+
 			pressStartedFromTouch = true;
 			applyRandomPressTilt();
 		};
@@ -371,6 +394,7 @@ function initializeTabSelectionPersistence() {
 		const clearPressTilt = () => {
 			pressStartedFromTouch = false;
 			tab.classList.remove("mobile-pressed");
+				tab.classList.remove("secret-touch-pressed");
 		};
 
 		const handleTabClick = (event) => {
