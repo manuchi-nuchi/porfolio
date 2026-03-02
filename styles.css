@@ -36,16 +36,16 @@
 	--tab-phase-start-y: 0deg;
 	--tab-tilt-delay: 0s;
 	--tab-tilt-angle: 0deg;
-	--child-amplitude-x: 12px;
-	--child-amplitude-y: 12px;
-	--child-frequency-x: 1.4123;
-	--child-frequency-y: 1.731234;
-	--child-speed-x: 3s;
-	--child-speed-y: 3s;
-	--child-phase-start-x: 0deg;
-	--child-phase-start-y: 0deg;
-	--child-phase-x: 0deg;
-	--child-phase-y: 0deg;
+	--player-visuals-amplitude-x: 12px;
+	--player-visuals-amplitude-y: 12px;
+	--player-visuals-frequency-x: 1.4123;
+	--player-visuals-frequency-y: 1.731234;
+	--player-visuals-speed-x: 3s;
+	--player-visuals-speed-y: 3s;
+	--player-visuals-phase-start-x: 0deg;
+	--player-visuals-phase-start-y: 0deg;
+	--player-visuals-phase-x: 0deg;
+	--player-visuals-phase-y: 0deg;
 }
 /* #endregion */
 
@@ -104,13 +104,13 @@
 	initial-value: 0deg;
 }
 
-@property --child-phase-x {
+@property --player-visuals-phase-x {
 	syntax: "<angle>";
 	inherits: false;
 	initial-value: 0deg;
 }
 
-@property --child-phase-y {
+@property --player-visuals-phase-y {
 	syntax: "<angle>";
 	inherits: false;
 	initial-value: 0deg;
@@ -226,21 +226,21 @@
 	}
 }
 
-@keyframes child-phase-x-loop {
+@keyframes player-visuals-phase-x-loop {
 	0% {
-		--child-phase-x: var(--child-phase-start-x, 0deg);
+		--player-visuals-phase-x: var(--player-visuals-phase-start-x, 0deg);
 	}
 	100% {
-		--child-phase-x: calc(var(--child-phase-start-x, 0deg) + 360deg);
+		--player-visuals-phase-x: calc(var(--player-visuals-phase-start-x, 0deg) + 360deg);
 	}
 }
 
-@keyframes child-phase-y-loop {
+@keyframes player-visuals-phase-y-loop {
 	0% {
-		--child-phase-y: var(--child-phase-start-y, 0deg);
+		--player-visuals-phase-y: var(--player-visuals-phase-start-y, 0deg);
 	}
 	100% {
-		--child-phase-y: calc(var(--child-phase-start-y, 0deg) + 360deg);
+		--player-visuals-phase-y: calc(var(--player-visuals-phase-start-y, 0deg) + 360deg);
 	}
 }
 
@@ -261,7 +261,7 @@
 	}
 }
 
-@keyframes bottom-circle-child-wiggle {
+@keyframes player-visuals-wiggle {
 	0%,
 	100% {
 		transform: translate(-50%, -50%) translate(0, 0);
@@ -307,7 +307,7 @@ body {
 	gap: 1rem;
 }
 
-.bottom-circle-parent {
+.player {
 	position: fixed;
 	left: 50%;
 	bottom: max(1.4rem, calc(env(safe-area-inset-bottom) + 0.75rem));
@@ -321,7 +321,7 @@ body {
 	pointer-events: none;
 }
 
-.bottom-circle-parent::after {
+.player::after {
 	content: "";
 	position: absolute;
 	inset: 0;
@@ -330,7 +330,7 @@ body {
 	z-index: 2;
 }
 
-.bottom-circle-child {
+.player-visuals {
 	position: absolute;
 	left: 50%;
 	top: 50%;
@@ -340,19 +340,19 @@ body {
 	background: #ffffff;
 	z-index: 1;
 	transform: translate(-50%, -50%);
-	animation: bottom-circle-child-wiggle 2.1s ease-in-out infinite;
+	animation: player-visuals-wiggle 2.1s ease-in-out infinite;
 }
 
 @supports (transform: translate(calc(1px * sin(1deg)), calc(1px * sin(1deg)))) {
-	.bottom-circle-child {
+	.player-visuals {
 		transform: translate(-50%, -50%)
 			translate(
-				calc(var(--child-amplitude-x) * sin(var(--child-phase-x))),
-				calc(var(--child-amplitude-y) * sin(var(--child-phase-y)))
+				calc(var(--player-visuals-amplitude-x) * sin(var(--player-visuals-phase-x))),
+				calc(var(--player-visuals-amplitude-y) * sin(var(--player-visuals-phase-y)))
 			);
 		animation:
-			child-phase-x-loop calc(var(--child-speed-x) / var(--child-frequency-x)) linear infinite,
-			child-phase-y-loop calc(var(--child-speed-y) / var(--child-frequency-y)) linear infinite;
+			player-visuals-phase-x-loop calc(var(--player-visuals-speed-x) / var(--player-visuals-frequency-x)) linear infinite,
+			player-visuals-phase-y-loop calc(var(--player-visuals-speed-y) / var(--player-visuals-frequency-y)) linear infinite;
 	}
 }
 

@@ -13,15 +13,15 @@ const MOBILE_MENU_BREAKPOINT = 1000;
 const MIN_ZOOM = 0.7;
 const MAX_ZOOM = 2;
 const ZOOM_STEP = 0.1;
-const BOTTOM_CIRCLE_MOVE_SPEED_PX_PER_SECOND = 400;
-const BOTTOM_CIRCLE_ACCELERATION_PX_PER_SECOND_SQUARED = 800;
-const BOTTOM_CIRCLE_DECELERATION_PX_PER_SECOND_SQUARED = 300;
-const BOTTOM_CIRCLE_SEEK_MAX_SPEED_PX_PER_SECOND = 140;
-const BOTTOM_CIRCLE_SEEK_ACCELERATION_PX_PER_SECOND_SQUARED = 220;
-const BOTTOM_CIRCLE_SEEK_IDLE_DELAY_MS = 2000;
+const PLAYER_MOVE_SPEED_PX_PER_SECOND = 400;
+const PLAYER_ACCELERATION_PX_PER_SECOND_SQUARED = 800;
+const PLAYER_DECELERATION_PX_PER_SECOND_SQUARED = 300;
+const PLAYER_SEEK_MAX_SPEED_PX_PER_SECOND = 140;
+const PLAYER_SEEK_ACCELERATION_PX_PER_SECOND_SQUARED = 220;
+const PLAYER_SEEK_IDLE_DELAY_MS = 2000;
 const BOTTOM_SQUARE_RUNNER_SPEED_PX_PER_SECOND = 100;
 const BOTTOM_SQUARE_RUNNER_STATE_KEY = "bottomSquareRunnerState";
-const BOTTOM_CIRCLE_STATE_KEY = "bottomCircleState";
+const PLAYER_STATE_KEY = "bottomCircleState";
 
 function readStorageItem(storage, key) {
 	try {
@@ -548,26 +548,26 @@ function initializeTabSelectionPersistence() {
 	});
 }
 
-function initializeBottomCircleDecoration() {
+function initializePlayerDecoration() {
 	if (!document.body) {
 		return null;
 	}
 
-	const existingCircle = document.querySelector(".bottom-circle-parent");
-	if (existingCircle instanceof HTMLElement) {
-		return existingCircle;
+	const existingPlayer = document.querySelector(".player");
+	if (existingPlayer instanceof HTMLElement) {
+		return existingPlayer;
 	}
 
-	const parentCircle = document.createElement("div");
-	parentCircle.className = "bottom-circle-parent";
-	parentCircle.setAttribute("aria-hidden", "true");
+	const player = document.createElement("div");
+	player.className = "player";
+	player.setAttribute("aria-hidden", "true");
 
-	const childCircle = document.createElement("div");
-	childCircle.className = "bottom-circle-child";
-	parentCircle.append(childCircle);
+	const playerVisuals = document.createElement("div");
+	playerVisuals.className = "player-visuals";
+	player.append(playerVisuals);
 
-	document.body.append(parentCircle);
-	return parentCircle;
+	document.body.append(player);
+	return player;
 }
 
 function initializeBottomSquareRunner() {
@@ -704,8 +704,8 @@ function initializeBottomSquareRunnerMovement(runnerSquare) {
 	ensureAnimationLoop();
 }
 
-function initializeBottomCircleMovement(parentCircle, runnerSquare) {
-	if (!(parentCircle instanceof HTMLElement)) {
+function initializePlayerMovement(player, runnerSquare) {
+	if (!(player instanceof HTMLElement)) {
 		return;
 	}
 
@@ -713,19 +713,19 @@ function initializeBottomCircleMovement(parentCircle, runnerSquare) {
 	let offsetY = 0;
 	let velocityX = 0;
 	let velocityY = 0;
-	let childOffsetX = 0;
-	let childOffsetY = 0;
-	let childPhaseX = "0deg";
-	let childPhaseY = "0deg";
+	let playerVisualsOffsetX = 0;
+	let playerVisualsOffsetY = 0;
+	let playerVisualsPhaseX = "0deg";
+	let playerVisualsPhaseY = "0deg";
 	let animationFrameId = 0;
 	let lastTimestampMs = 0;
 	let lastDirectionalInputTimestampMs = performance.now();
 	let hasReceivedDirectionalInput = false;
 	const activeKeys = new Set();
-	const childCircle = parentCircle.querySelector(".bottom-circle-child");
+	const playerVisuals = player.querySelector(".player-visuals");
 
-	const readSavedCircleState = () => {
-		const rawState = readStorageItem(sessionStorage, BOTTOM_CIRCLE_STATE_KEY);
+	const readSavedPlayerState = () => {
+		const rawState = readStorageItem(sessionStorage, PLAYER_STATE_KEY);
 		if (!rawState) {
 			return null;
 		}
@@ -740,13 +740,13 @@ function initializeBottomCircleMovement(parentCircle, runnerSquare) {
 			const savedOffsetY = Number(parsedState.offsetY);
 			const savedVelocityX = Number(parsedState.velocityX);
 			const savedVelocityY = Number(parsedState.velocityY);
-			const savedChildOffsetX = Number(parsedState.childOffsetX);
-			const savedChildOffsetY = Number(parsedState.childOffsetY);
-			const savedChildPhaseX =
+			const savedPlayerVisualsOffsetX = Number(parsedState.childOffsetX);
+			const savedPlayerVisualsOffsetY = Number(parsedState.childOffsetY);
+			const savedPlayerVisualsPhaseX =
 				typeof parsedState.childPhaseX === "string" && parsedState.childPhaseX.trim().length > 0
 					? parsedState.childPhaseX
 					: "0deg";
-			const savedChildPhaseY =
+			const savedPlayerVisualsPhaseY =
 				typeof parsedState.childPhaseY === "string" && parsedState.childPhaseY.trim().length > 0
 					? parsedState.childPhaseY
 					: "0deg";
@@ -756,8 +756,8 @@ function initializeBottomCircleMovement(parentCircle, runnerSquare) {
 				!Number.isFinite(savedOffsetY) ||
 				!Number.isFinite(savedVelocityX) ||
 				!Number.isFinite(savedVelocityY) ||
-				!Number.isFinite(savedChildOffsetX) ||
-				!Number.isFinite(savedChildOffsetY)
+				!Number.isFinite(savedPlayerVisualsOffsetX) ||
+				!Number.isFinite(savedPlayerVisualsOffsetY)
 			) {
 				return null;
 			}
@@ -767,65 +767,65 @@ function initializeBottomCircleMovement(parentCircle, runnerSquare) {
 				offsetY: savedOffsetY,
 				velocityX: savedVelocityX,
 				velocityY: savedVelocityY,
-				childOffsetX: savedChildOffsetX,
-				childOffsetY: savedChildOffsetY,
-				childPhaseX: savedChildPhaseX,
-				childPhaseY: savedChildPhaseY,
+				playerVisualsOffsetX: savedPlayerVisualsOffsetX,
+				playerVisualsOffsetY: savedPlayerVisualsOffsetY,
+				playerVisualsPhaseX: savedPlayerVisualsPhaseX,
+				playerVisualsPhaseY: savedPlayerVisualsPhaseY,
 			};
 		} catch {
 			return null;
 		}
 	};
 
-	const captureChildCircleState = () => {
-		if (!(childCircle instanceof HTMLElement)) {
+	const capturePlayerVisualsState = () => {
+		if (!(playerVisuals instanceof HTMLElement)) {
 			return;
 		}
 
-		const parentRect = parentCircle.getBoundingClientRect();
-		const childRect = childCircle.getBoundingClientRect();
+		const parentRect = player.getBoundingClientRect();
+		const childRect = playerVisuals.getBoundingClientRect();
 		const parentCenterX = parentRect.left + parentRect.width / 2;
 		const parentCenterY = parentRect.top + parentRect.height / 2;
 		const childCenterX = childRect.left + childRect.width / 2;
 		const childCenterY = childRect.top + childRect.height / 2;
 
-		childOffsetX = childCenterX - parentCenterX;
-		childOffsetY = childCenterY - parentCenterY;
+		playerVisualsOffsetX = childCenterX - parentCenterX;
+		playerVisualsOffsetY = childCenterY - parentCenterY;
 
-		const computedStyle = getComputedStyle(childCircle);
-		const nextChildPhaseX = computedStyle.getPropertyValue("--child-phase-x").trim();
-		const nextChildPhaseY = computedStyle.getPropertyValue("--child-phase-y").trim();
-		if (nextChildPhaseX) {
-			childPhaseX = nextChildPhaseX;
+		const computedStyle = getComputedStyle(playerVisuals);
+		const nextPlayerVisualsPhaseX = computedStyle.getPropertyValue("--player-visuals-phase-x").trim();
+		const nextPlayerVisualsPhaseY = computedStyle.getPropertyValue("--player-visuals-phase-y").trim();
+		if (nextPlayerVisualsPhaseX) {
+			playerVisualsPhaseX = nextPlayerVisualsPhaseX;
 		}
-		if (nextChildPhaseY) {
-			childPhaseY = nextChildPhaseY;
+		if (nextPlayerVisualsPhaseY) {
+			playerVisualsPhaseY = nextPlayerVisualsPhaseY;
 		}
 	};
 
-	const applySavedChildPhase = () => {
-		if (!(childCircle instanceof HTMLElement)) {
+	const applySavedPlayerVisualsPhase = () => {
+		if (!(playerVisuals instanceof HTMLElement)) {
 			return;
 		}
 
-		childCircle.style.setProperty("--child-phase-start-x", childPhaseX);
-		childCircle.style.setProperty("--child-phase-start-y", childPhaseY);
+		playerVisuals.style.setProperty("--player-visuals-phase-start-x", playerVisualsPhaseX);
+		playerVisuals.style.setProperty("--player-visuals-phase-start-y", playerVisualsPhaseY);
 	};
 
-	const saveCircleState = () => {
-		captureChildCircleState();
+	const savePlayerState = () => {
+		capturePlayerVisualsState();
 		writeStorageItem(
 			sessionStorage,
-			BOTTOM_CIRCLE_STATE_KEY,
+			PLAYER_STATE_KEY,
 			JSON.stringify({
 				offsetX,
 				offsetY,
 				velocityX,
 				velocityY,
-				childOffsetX,
-				childOffsetY,
-				childPhaseX,
-				childPhaseY,
+				childOffsetX: playerVisualsOffsetX,
+				childOffsetY: playerVisualsOffsetY,
+				childPhaseX: playerVisualsPhaseX,
+				childPhaseY: playerVisualsPhaseY,
 			}),
 		);
 	};
@@ -844,11 +844,11 @@ function initializeBottomCircleMovement(parentCircle, runnerSquare) {
 	};
 
 	const applyPosition = () => {
-		parentCircle.style.transform = `translate(calc(-50% + ${offsetX}px), ${offsetY}px)`;
+		player.style.transform = `translate(calc(-50% + ${offsetX}px), ${offsetY}px)`;
 	};
 
 	const clampPositionWithinViewport = () => {
-		const rect = parentCircle.getBoundingClientRect();
+		const rect = player.getBoundingClientRect();
 		let adjustX = 0;
 		let adjustY = 0;
 
@@ -882,12 +882,12 @@ function initializeBottomCircleMovement(parentCircle, runnerSquare) {
 		return currentValue + Math.sign(delta) * maxDelta;
 	};
 
-	const alignParentWithSquareStart = () => {
+	const alignPlayerWithSquareStart = () => {
 		if (!(runnerSquare instanceof HTMLElement)) {
 			return;
 		}
 
-		const parentRect = parentCircle.getBoundingClientRect();
+		const parentRect = player.getBoundingClientRect();
 		const squareRect = runnerSquare.getBoundingClientRect();
 		const parentCenterX = parentRect.left + parentRect.width / 2;
 		const parentCenterY = parentRect.top + parentRect.height / 2;
@@ -938,7 +938,7 @@ function initializeBottomCircleMovement(parentCircle, runnerSquare) {
 			lastDirectionalInputTimestampMs = timestampMs;
 		}
 
-		const isSeekDelayElapsed = timestampMs - lastDirectionalInputTimestampMs >= BOTTOM_CIRCLE_SEEK_IDLE_DELAY_MS;
+		const isSeekDelayElapsed = timestampMs - lastDirectionalInputTimestampMs >= PLAYER_SEEK_IDLE_DELAY_MS;
 		const shouldSeekSquare =
 			!hasDirectionalInput && (!hasReceivedDirectionalInput || isSeekDelayElapsed);
 		let targetVelocityX = 0;
@@ -949,10 +949,10 @@ function initializeBottomCircleMovement(parentCircle, runnerSquare) {
 			const normalizedDirectionX = directionX / directionMagnitude;
 			const normalizedDirectionY = directionY / directionMagnitude;
 
-			targetVelocityX = normalizedDirectionX * BOTTOM_CIRCLE_MOVE_SPEED_PX_PER_SECOND;
-			targetVelocityY = normalizedDirectionY * BOTTOM_CIRCLE_MOVE_SPEED_PX_PER_SECOND;
+			targetVelocityX = normalizedDirectionX * PLAYER_MOVE_SPEED_PX_PER_SECOND;
+			targetVelocityY = normalizedDirectionY * PLAYER_MOVE_SPEED_PX_PER_SECOND;
 		} else if (shouldSeekSquare && runnerSquare instanceof HTMLElement) {
-			const parentRect = parentCircle.getBoundingClientRect();
+			const parentRect = player.getBoundingClientRect();
 			const squareRect = runnerSquare.getBoundingClientRect();
 			const parentCenterX = parentRect.left + parentRect.width / 2;
 			const parentCenterY = parentRect.top + parentRect.height / 2;
@@ -966,15 +966,15 @@ function initializeBottomCircleMovement(parentCircle, runnerSquare) {
 			if (distance > 0.5) {
 				const seekDirectionX = deltaX / distance;
 				const seekDirectionY = deltaY / distance;
-				const seekSpeed = Math.min(BOTTOM_CIRCLE_SEEK_MAX_SPEED_PX_PER_SECOND, distance * 1.6);
+				const seekSpeed = Math.min(PLAYER_SEEK_MAX_SPEED_PX_PER_SECOND, distance * 1.6);
 				targetVelocityX = seekDirectionX * seekSpeed;
 				targetVelocityY = seekDirectionY * seekSpeed;
 			}
 		}
 
-		const accelerationPerFrame = BOTTOM_CIRCLE_ACCELERATION_PX_PER_SECOND_SQUARED * elapsedSeconds;
-		const decelerationPerFrame = BOTTOM_CIRCLE_DECELERATION_PX_PER_SECOND_SQUARED * elapsedSeconds;
-		const seekAccelerationPerFrame = BOTTOM_CIRCLE_SEEK_ACCELERATION_PX_PER_SECOND_SQUARED * elapsedSeconds;
+		const accelerationPerFrame = PLAYER_ACCELERATION_PX_PER_SECOND_SQUARED * elapsedSeconds;
+		const decelerationPerFrame = PLAYER_DECELERATION_PX_PER_SECOND_SQUARED * elapsedSeconds;
+		const seekAccelerationPerFrame = PLAYER_SEEK_ACCELERATION_PX_PER_SECOND_SQUARED * elapsedSeconds;
 
 		let velocityStepX = decelerationPerFrame;
 		let velocityStepY = decelerationPerFrame;
@@ -994,7 +994,7 @@ function initializeBottomCircleMovement(parentCircle, runnerSquare) {
 		offsetY += velocityY * elapsedSeconds;
 		applyPosition();
 		clampPositionWithinViewport();
-		saveCircleState();
+		savePlayerState();
 
 		animationFrameId = window.requestAnimationFrame(step);
 	};
@@ -1035,18 +1035,18 @@ function initializeBottomCircleMovement(parentCircle, runnerSquare) {
 		activeKeys.clear();
 	};
 
-	const savedState = readSavedCircleState();
-	const hasRestoredCircleState = Boolean(savedState);
+	const savedState = readSavedPlayerState();
+	const hasRestoredPlayerState = Boolean(savedState);
 	if (savedState) {
 		offsetX = savedState.offsetX;
 		offsetY = savedState.offsetY;
 		velocityX = savedState.velocityX;
 		velocityY = savedState.velocityY;
-		childOffsetX = savedState.childOffsetX;
-		childOffsetY = savedState.childOffsetY;
-		childPhaseX = savedState.childPhaseX;
-		childPhaseY = savedState.childPhaseY;
-		applySavedChildPhase();
+		playerVisualsOffsetX = savedState.playerVisualsOffsetX;
+		playerVisualsOffsetY = savedState.playerVisualsOffsetY;
+		playerVisualsPhaseX = savedState.playerVisualsPhaseX;
+		playerVisualsPhaseY = savedState.playerVisualsPhaseY;
+		applySavedPlayerVisualsPhase();
 		applyPosition();
 		clampPositionWithinViewport();
 	}
@@ -1057,18 +1057,18 @@ function initializeBottomCircleMovement(parentCircle, runnerSquare) {
 	window.addEventListener("resize", () => {
 		applyPosition();
 		clampPositionWithinViewport();
-		saveCircleState();
+		savePlayerState();
 	});
-	window.addEventListener("pagehide", saveCircleState);
-	if (!hasRestoredCircleState) {
-		alignParentWithSquareStart();
-		saveCircleState();
+	window.addEventListener("pagehide", savePlayerState);
+	if (!hasRestoredPlayerState) {
+		alignPlayerWithSquareStart();
+		savePlayerState();
 	}
 	ensureAnimationLoop();
 }
 
 function initializeSiteUi() {
-	const parentCircle = initializeBottomCircleDecoration();
+	const player = initializePlayerDecoration();
 	const runnerSquare = initializeBottomSquareRunner();
 
 	try {
@@ -1077,7 +1077,7 @@ function initializeSiteUi() {
 	}
 
 	try {
-		initializeBottomCircleMovement(parentCircle, runnerSquare);
+		initializePlayerMovement(player, runnerSquare);
 	} catch {
 	}
 
