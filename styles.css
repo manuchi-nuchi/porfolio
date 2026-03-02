@@ -217,6 +217,15 @@
 	}
 }
 
+@keyframes secret-tab-red-fade {
+	0% {
+		background-color: rgba(255, 0, 0, 1);
+	}
+	100% {
+		background-color: rgba(255, 0, 0, 0);
+	}
+}
+
 @keyframes child-phase-x-loop {
 	0% {
 		--child-phase-x: var(--child-phase-start-x, 0deg);
@@ -368,7 +377,7 @@ body {
 	right: auto;
 	margin-inline: 0;
 	transform: translateX(-50%);
-	width: 31.5rem;
+	width: 37rem;
 	display: flex;
 	gap: 0.45rem;
 	padding: 0.45rem;
@@ -404,7 +413,7 @@ body {
 	cursor: pointer;
 }
 
-@media (max-width: 860px) {
+@media (max-width: 1000px) {
 	.site-menu-toggle {
 		display: inline-flex;
 	}
@@ -447,6 +456,16 @@ body {
 	transition: color 140ms ease;
 }
 
+.site-nav a.secret-tab {
+	min-width: 4.8rem;
+	text-align: center;
+	transition: none;
+}
+
+.site-nav a.secret-tab::before {
+	transition: none;
+}
+
 .site-nav a::before {
 	content: "";
 	position: absolute;
@@ -474,6 +493,41 @@ body {
 
 .site-nav a:not(.active):hover {
 	color: #000000;
+}
+
+.site-nav a.secret-tab:not(.active):hover::before {
+	background-color: #2f2f2f;
+	transform: translate(
+		var(--tab-press-translate-x, 0px),
+		var(--tab-press-translate-y, 0px)
+	) rotate(var(--tab-press-tilt, 0deg));
+	animation: none;
+}
+
+.site-nav a.secret-tab:not(.active):hover {
+	color: #ffffff;
+}
+
+.site-nav a.secret-tab.secret-key-hover::before {
+	background-color: #2f2f2f;
+	transform: translate(
+		var(--tab-press-translate-x, 0px),
+		var(--tab-press-translate-y, 0px)
+	) rotate(var(--tab-press-tilt, 0deg));
+	animation: none;
+}
+
+.site-nav a.secret-tab.secret-key-hover {
+	color: #ffffff;
+}
+
+.site-nav a.secret-tab.secret-release-fade::before {
+	transform: translate(
+		var(--tab-press-translate-x, 0px),
+		var(--tab-press-translate-y, 0px)
+	) rotate(var(--tab-press-tilt, 0deg)) scale(1.2);
+	background-color: rgba(255, 0, 0, 1);
+	animation: secret-tab-red-fade 0.5s linear forwards;
 }
 
 .site-nav a.active {
@@ -731,7 +785,7 @@ p + p {
 	color: #000000;
 }
 
-@media (max-width: 860px) {
+@media (max-width: 1000px) {
 	.home-page main {
 		width: min(760px, 100%);
 	}

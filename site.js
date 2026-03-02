@@ -9,7 +9,7 @@ const TAB_ROTATION_MAX = 5;
 const TAB_PRESS_TRANSLATE_X_MAX = 2;
 const TAB_PRESS_TRANSLATE_Y_MAX = 3;
 const TAP_NAV_DELAY_MS = 140;
-const MOBILE_MENU_BREAKPOINT = 860;
+const MOBILE_MENU_BREAKPOINT = 1000;
 const MIN_ZOOM = 0.7;
 const MAX_ZOOM = 2;
 const ZOOM_STEP = 0.1;
@@ -124,6 +124,10 @@ function getTabPathFromLink(link) {
 function saveSelectedTabTransform(event) {
 	const clickedTab = event.target.closest(".site-nav a");
 	if (!clickedTab) {
+		return;
+	}
+
+	if (clickedTab.classList.contains("secret-tab")) {
 		return;
 	}
 
@@ -268,6 +272,7 @@ function initializeTabSelectionPersistence() {
 	siteNav.addEventListener("click", saveSelectedTabTransform);
 
 	const tabs = Array.from(siteNav.querySelectorAll("a"));
+	const secretTab = tabs.find((tab) => tab.classList.contains("secret-tab")) ?? null;
 	let pressedKeyboardDigit = null;
 	let pressedKeyboardTab = null;
 
@@ -296,6 +301,7 @@ function initializeTabSelectionPersistence() {
 	const clearKeyboardPressedTab = () => {
 		if (pressedKeyboardTab instanceof HTMLAnchorElement) {
 			pressedKeyboardTab.classList.remove("keyboard-pressed");
+			pressedKeyboardTab.classList.remove("secret-key-hover");
 		}
 
 		pressedKeyboardDigit = null;
@@ -304,8 +310,23 @@ function initializeTabSelectionPersistence() {
 
 	tabs.forEach((tab) => {
 		let pressStartedFromTouch = false;
+		const isSecretTab = tab.classList.contains("secret-tab");
+
+		const applyRandomSecretHoverTilt = () => {
+			const pressTilt = Math.random() * (TAB_ROTATION_MAX - TAB_ROTATION_MIN) + TAB_ROTATION_MIN;
+			const pressTranslateX = (Math.random() * 2 - 1) * TAB_PRESS_TRANSLATE_X_MAX;
+			const pressTranslateY = (Math.random() * 2 - 1) * TAB_PRESS_TRANSLATE_Y_MAX;
+			tab.style.setProperty("--tab-press-tilt", `${pressTilt}deg`);
+			tab.style.setProperty("--tab-press-translate-x", `${pressTranslateX}px`);
+			tab.style.setProperty("--tab-press-translate-y", `${pressTranslateY}px`);
+		};
 
 		const randomizeStartPhase = () => {
+			if (isSecretTab) {
+				applyRandomSecretHoverTilt();
+				return;
+			}
+
 			applyRandomTabPhaseSeed(tab);
 		};
 
@@ -353,6 +374,12 @@ function initializeTabSelectionPersistence() {
 		};
 
 		const handleTabClick = (event) => {
+			if (isSecretTab) {
+				event.preventDefault();
+				clearPressTilt();
+				return;
+			}
+
 			if (!pressStartedFromTouch) {
 				return;
 			}
@@ -393,7 +420,35 @@ function initializeTabSelectionPersistence() {
 		}
 
 		const digit = Number.parseInt(event.key, 10);
-		if (!Number.isInteger(digit) || digit < 1 || digit > 6) {
+		if (!Number.isInteger(digit)) {
+			return;
+		}
+
+		if (digit === 7) {
+			if (!(secretTab instanceof HTMLAnchorElement)) {
+				return;
+			}
+
+			event.preventDefault();
+			if (pressedKeyboardDigit !== null && pressedKeyboardDigit !== 7) {
+				clearKeyboardPressedTab();
+			}
+
+			pressedKeyboardDigit = 7;
+			pressedKeyboardTab = secretTab;
+
+			const pressTilt = Math.random() * (TAB_ROTATION_MAX - TAB_ROTATION_MIN) + TAB_ROTATION_MIN;
+			const pressTranslateX = (Math.random() * 2 - 1) * TAB_PRESS_TRANSLATE_X_MAX;
+			const pressTranslateY = (Math.random() * 2 - 1) * TAB_PRESS_TRANSLATE_Y_MAX;
+			secretTab.style.setProperty("--tab-press-tilt", `${pressTilt}deg`);
+			secretTab.style.setProperty("--tab-press-translate-x", `${pressTranslateX}px`);
+			secretTab.style.setProperty("--tab-press-translate-y", `${pressTranslateY}px`);
+			secretTab.classList.remove("secret-release-fade");
+			secretTab.classList.add("secret-key-hover");
+			return;
+		}
+
+		if (digit < 1 || digit > 6) {
 			return;
 		}
 
@@ -414,7 +469,31 @@ function initializeTabSelectionPersistence() {
 
 	document.addEventListener("keyup", (event) => {
 		const digit = Number.parseInt(event.key, 10);
-		if (!Number.isInteger(digit) || digit < 1 || digit > 6 || pressedKeyboardDigit !== digit) {
+		if (!Number.isInteger(digit) || pressedKeyboardDigit !== digit) {
+			return;
+		}
+
+		if (digit === 7) {
+			const tabToFlash = pressedKeyboardTab;
+			pressedKeyboardDigit = null;
+			pressedKeyboardTab = null;
+
+			if (!(tabToFlash instanceof HTMLAnchorElement)) {
+				return;
+			}
+
+			event.preventDefault();
+			tabToFlash.classList.remove("secret-key-hover");
+			tabToFlash.classList.remove("secret-release-fade");
+			void tabToFlash.offsetWidth;
+			tabToFlash.classList.add("secret-release-fade");
+			setTimeout(() => {
+				tabToFlash.classList.remove("secret-release-fade");
+			}, 1000);
+			return;
+		}
+
+		if (digit < 1 || digit > 6) {
 			return;
 		}
 
