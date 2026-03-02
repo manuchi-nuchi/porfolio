@@ -20,6 +20,10 @@ const PLAYER_DECELERATION_PX_PER_SECOND_SQUARED = 300;
 const PLAYER_SEEK_MAX_SPEED_PX_PER_SECOND = 140;
 const PLAYER_SEEK_ACCELERATION_PX_PER_SECOND_SQUARED = 220;
 const PLAYER_SEEK_IDLE_DELAY_MS = 2000;
+const PLAYER_BULLET_SIZE_PX = 6;
+const PLAYER_BULLET_OFFSET_FROM_VISUALS_PX = 2;
+const PLAYER_BULLET_SPEED_PX_PER_SECOND = 2000;
+const PLAYER_BULLET_RECOIL_SPEED_DELTA_PX_PER_SECOND = 120;
 const PLAYER_INPUT_CARRY_STATE_KEY = "playerInputCarryState";
 const PLAYER_INPUT_CARRY_MAX_AGE_MS = 2000;
 const BOTTOM_SQUARE_RUNNER_SPEED_PX_PER_SECOND = 100;
@@ -291,6 +295,7 @@ function initializeTabSelectionPersistence() {
 	let pressedKeyboardDigit = null;
 	let pressedKeyboardTab = null;
 	let proximitySelectedTab = null;
+	let activeReplayToggle = false;
 
 	const applyRandomTabPhaseSeed = (tab) => {
 		const randomPhaseX = Math.random() * 360;
@@ -312,6 +317,25 @@ function initializeTabSelectionPersistence() {
 		tab.style.setProperty("--tab-press-translate-y", `${pressTranslateY}px`);
 		applyRandomTabPhaseSeed(tab);
 		tab.classList.add("keyboard-pressed");
+	};
+
+	const applyActiveTabKeyPressVisual = (tab) => {
+		const pressTilt = Math.random() * (TAB_ROTATION_MAX - TAB_ROTATION_MIN) + TAB_ROTATION_MIN;
+		const pressTranslateX = (Math.random() * 2 - 1) * TAB_PRESS_TRANSLATE_X_MAX;
+		const pressTranslateY = (Math.random() * 2 - 1) * TAB_PRESS_TRANSLATE_Y_MAX;
+		const randomHue = Math.floor(Math.random() * 360);
+		tab.style.setProperty("--active-tab-rotation-clicked", `${pressTilt}deg`);
+		tab.style.setProperty("--active-tab-translate-x", `${pressTranslateX}px`);
+		tab.style.setProperty("--active-tab-translate-y", `${pressTranslateY}px`);
+		tab.style.setProperty("--active-tab-hue", String(randomHue));
+		tab.classList.remove("active-key-replay-a", "active-key-replay-b");
+		void tab.offsetWidth;
+		const replayClassName = activeReplayToggle ? "active-key-replay-a" : "active-key-replay-b";
+		tab.classList.add(replayClassName);
+		activeReplayToggle = !activeReplayToggle;
+		setTimeout(() => {
+			tab.classList.remove("active-key-replay-a", "active-key-replay-b");
+		}, 220);
 	};
 
 	const clearKeyboardPressedTab = () => {
@@ -596,6 +620,12 @@ function initializeTabSelectionPersistence() {
 
 		pressedKeyboardDigit = digit;
 		pressedKeyboardTab = tab;
+
+		if (tab.classList.contains("active")) {
+			applyActiveTabKeyPressVisual(tab);
+			return;
+		}
+
 		applyKeyboardPressTilt(tab);
 	});
 
@@ -827,6 +857,7 @@ function initializePlayerMovement(player, runnerSquare) {
 	const restoredCarryKeys = new Set();
 	let restoredCarryExpiresAtMs = 0;
 	const playerVisuals = player.querySelector(".player-visuals");
+	const activeBullets = [];
 
 	const saveInputCarryState = () => {
 		if (activeKeys.size === 0) {
@@ -879,6 +910,72 @@ function initializePlayerMovement(player, runnerSquare) {
 				restoredCarryExpiresAtMs = performance.now() + PLAYER_INPUT_CARRY_MAX_AGE_MS;
 			}
 		} catch {
+		}
+	};
+
+	const spawnBullet = (directionX, directionY) => {
+		if (!(playerVisuals instanceof HTMLElement)) {
+			return;
+		}
+
+		const visualsRect = playerVisuals.getBoundingClientRect();
+		const visualsCenterX = visualsRect.left + visualsRect.width / 2;
+		const visualsCenterY = visualsRect.top + visualsRect.height / 2;
+		const bulletRadius = PLAYER_BULLET_SIZE_PX / 2;
+		const visualsRadiusX = visualsRect.width / 2;
+		const visualsRadiusY = visualsRect.height / 2;
+
+		const startCenterX = visualsCenterX + directionX * (visualsRadiusX + PLAYER_BULLET_OFFSET_FROM_VISUALS_PX + bulletRadius);
+		const startCenterY = visualsCenterY + directionY * (visualsRadiusY + PLAYER_BULLET_OFFSET_FROM_VISUALS_PX + bulletRadius);
+
+		const bulletElement = document.createElement("div");
+		bulletElement.className = "player-bullet";
+		document.body.append(bulletElement);
+
+		activeBullets.push({
+			element: bulletElement,
+			centerX: startCenterX,
+			centerY: startCenterY,
+			velocityX: directionX * PLAYER_BULLET_SPEED_PX_PER_SECOND,
+			velocityY: directionY * PLAYER_BULLET_SPEED_PX_PER_SECOND,
+		});
+
+		velocityX -= directionX * PLAYER_BULLET_RECOIL_SPEED_DELTA_PX_PER_SECOND;
+		velocityY -= directionY * PLAYER_BULLET_RECOIL_SPEED_DELTA_PX_PER_SECOND;
+		const currentSpeed = Math.hypot(velocityX, velocityY);
+		if (currentSpeed > PLAYER_MOVE_SPEED_PX_PER_SECOND) {
+			const speedScale = PLAYER_MOVE_SPEED_PX_PER_SECOND / currentSpeed;
+			velocityX *= speedScale;
+			velocityY *= speedScale;
+		}
+
+		bulletElement.style.transform = `translate(${startCenterX - bulletRadius}px, ${startCenterY - bulletRadius}px)`;
+	};
+
+	const updateBullets = (elapsedSeconds) => {
+		if (activeBullets.length === 0) {
+			return;
+		}
+
+		const bulletRadius = PLAYER_BULLET_SIZE_PX / 2;
+		for (let index = activeBullets.length - 1; index >= 0; index -= 1) {
+			const bullet = activeBullets[index];
+			bullet.centerX += bullet.velocityX * elapsedSeconds;
+			bullet.centerY += bullet.velocityY * elapsedSeconds;
+
+			const isCompletelyOffScreen =
+				bullet.centerX + bulletRadius < 0 ||
+				bullet.centerX - bulletRadius > window.innerWidth ||
+				bullet.centerY + bulletRadius < 0 ||
+				bullet.centerY - bulletRadius > window.innerHeight;
+
+			if (isCompletelyOffScreen) {
+				bullet.element.remove();
+				activeBullets.splice(index, 1);
+				continue;
+			}
+
+			bullet.element.style.transform = `translate(${bullet.centerX - bulletRadius}px, ${bullet.centerY - bulletRadius}px)`;
 		}
 	};
 
@@ -1097,6 +1194,8 @@ function initializePlayerMovement(player, runnerSquare) {
 		const elapsedSeconds = Math.min(50, timestampMs - lastTimestampMs) / 1000;
 		lastTimestampMs = timestampMs;
 
+		updateBullets(elapsedSeconds);
+
 		const { directionX, directionY } = getDirection();
 		const hasDirectionalInput = directionX !== 0 || directionY !== 0;
 		if (hasDirectionalInput) {
@@ -1181,7 +1280,25 @@ function initializePlayerMovement(player, runnerSquare) {
 			return;
 		}
 
-		const key = event.key.toLowerCase();
+		const arrowKeyDirections = {
+			arrowup: { directionX: 0, directionY: -1 },
+			arrowdown: { directionX: 0, directionY: 1 },
+			arrowleft: { directionX: -1, directionY: 0 },
+			arrowright: { directionX: 1, directionY: 0 },
+		};
+
+		const normalizedKey = event.key.toLowerCase();
+		const arrowDirection = arrowKeyDirections[normalizedKey];
+		if (arrowDirection) {
+			event.preventDefault();
+			if (!event.repeat) {
+				spawnBullet(arrowDirection.directionX, arrowDirection.directionY);
+			}
+			ensureAnimationLoop();
+			return;
+		}
+
+		const key = normalizedKey;
 		if (key !== "w" && key !== "a" && key !== "s" && key !== "d") {
 			return;
 		}

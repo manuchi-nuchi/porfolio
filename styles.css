@@ -261,6 +261,23 @@
 	}
 }
 
+@keyframes tab-select-in-alt {
+	0% {
+		background-color: #ffffff;
+		transform: translate(
+			var(--active-tab-translate-x, 0px),
+			var(--active-tab-translate-y, 0px)
+		) rotate(var(--active-tab-rotation-clicked, var(--active-tab-rotation, 0deg))) scale(1);
+	}
+	100% {
+		background-color: hsl(var(--active-tab-hue, 0) 100% 45%);
+		transform: translate(
+			var(--active-tab-translate-x, 0px),
+			var(--active-tab-translate-y, 0px)
+		) rotate(var(--active-tab-rotation-clicked, var(--active-tab-rotation, 0deg))) scale(1.2);
+	}
+}
+
 @keyframes player-visuals-wiggle {
 	0%,
 	100% {
@@ -341,6 +358,19 @@ body {
 	z-index: 1;
 	transform: translate(-50%, -50%);
 	animation: player-visuals-wiggle 2.1s ease-in-out infinite;
+}
+
+.player-bullet {
+	position: fixed;
+	left: 0;
+	top: 0;
+	width: 6px;
+	height: 6px;
+	border-radius: 999px;
+	background: #ffffff;
+	pointer-events: none;
+	z-index: 1003;
+	will-change: transform;
 }
 
 @supports (transform: translate(calc(1px * sin(1deg)), calc(1px * sin(1deg)))) {
@@ -585,6 +615,14 @@ body {
 		var(--active-tab-translate-y, 0px)
 	) rotate(var(--active-tab-rotation-clicked, var(--active-tab-rotation, 0deg))) scale(1.2);
 	animation: tab-select-in 0.2s ease-in-out both;
+}
+
+.site-nav a.active.active-key-replay-a::before {
+	animation: tab-select-in 0.2s ease-in-out both;
+}
+
+.site-nav a.active.active-key-replay-b::before {
+	animation: tab-select-in-alt 0.2s ease-in-out both;
 }
 
 .site-nav a:nth-child(1) {
