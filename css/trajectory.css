@@ -1,0 +1,48 @@
+@keyframes trajectory-line-reveal {
+	0% {
+		transform: scaleY(0);
+	}
+	100% {
+		transform: scaleY(1);
+	}
+}
+
+body.trajectory-page .site-nav::before {
+	content: "";
+	position: absolute;
+	left: var(--trajectory-line-x, 50%);
+	top: calc(var(--trajectory-line-top-offset, 0px) * -1);
+	width: 1px;
+	height: 100vh;
+	background: #ffffff;
+	pointer-events: none;
+	z-index: 0;
+	transform-origin: top center;
+	transform: scaleY(0);
+	animation: trajectory-line-reveal 0.5s ease-out forwards;
+}
+
+body.trajectory-page .site-nav a {
+	z-index: 1;
+}
+
+@media (max-width: 1000px) {
+	body.trajectory-page .site-nav::before {
+		display: none;
+	}
+
+	body.trajectory-page::before {
+		content: "";
+		position: fixed;
+		left: 50vw;
+		top: 0;
+		width: 1px;
+		height: 100vh;
+		background: #ffffff;
+		pointer-events: none;
+		z-index: 0;
+		transform-origin: top center;
+		transform: scaleY(0);
+		animation: trajectory-line-reveal 0.5s ease-out forwards;
+	}
+}
