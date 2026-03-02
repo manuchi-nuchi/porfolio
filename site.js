@@ -27,6 +27,12 @@ const PLAYER_BULLET_OFFSET_FROM_VISUALS_PX = 2;
 const PLAYER_BULLET_SPEED_PX_PER_SECOND = 2000;
 const PLAYER_BULLET_RECOIL_SPEED_DELTA_PX_PER_SECOND = 120;
 const PLAYER_INTERACT_BUBBLE_RADIUS_FROM_PLAYER_PX = 50;
+const PLAYER_IDLE_HINT_INITIAL_DELAY_MS = 30000;
+const PLAYER_IDLE_HINT_DURATION_MS = 1000;
+const PLAYER_IDLE_HINT_REPEAT_MIN_DELAY_MS = 10000;
+const PLAYER_IDLE_HINT_REPEAT_MAX_DELAY_MS = 20000;
+const PLAYER_IDLE_HINT_INPUT_OPTIONS = ["w", "a", "s", "d"];
+const PLAYER_IDLE_HINT_STATE_KEY = "playerIdleHintState";
 const PLAYER_BUBBLE_SUPPRESSION_KEY = "playerBubbleSuppressedUntilLeave";
 const PLAYER_INPUT_CARRY_STATE_KEY = "playerInputCarryState";
 const PLAYER_INPUT_CARRY_MAX_AGE_MS = 2000;
@@ -590,7 +596,7 @@ function initializeTabSelectionPersistence() {
 			bubbleSuppressionNeedsLeave = true;
 			writeStorageItem(sessionStorage, PLAYER_BUBBLE_SUPPRESSION_KEY, "1");
 			window.isPlayerNearTab = false;
-			const bubbleElement = document.querySelector(".player-interact-bubble");
+			const bubbleElement = document.querySelector(".player-tab-interact-bubble");
 			if (bubbleElement instanceof HTMLElement) {
 				bubbleElement.classList.remove("visible");
 			}
@@ -883,8 +889,13 @@ function initializePlayerMovement(player, runnerSquare) {
 	const activeBullets = [];
 	let playerInteractBubbleAngleRad = 0;
 	let hasPlayerInteractBubbleAnchor = false;
+	let idleHintBubbleAngleRad = 0;
+	let hasIdleHintBubbleAnchor = false;
+	let idleHintVisibleUntilEpochMs = 0;
+	let nextIdleHintAtEpochMs = Date.now() + PLAYER_IDLE_HINT_INITIAL_DELAY_MS;
+	let hasPlayerMovementStarted = false;
 	const playerInteractBubble = (() => {
-		const existingBubble = document.querySelector(".player-interact-bubble");
+		const existingBubble = document.querySelector(".player-tab-interact-bubble");
 		if (existingBubble instanceof HTMLElement) {
 			return existingBubble;
 		}
@@ -894,8 +905,24 @@ function initializePlayerMovement(player, runnerSquare) {
 		}
 
 		const bubble = document.createElement("div");
-		bubble.className = "player-interact-bubble";
+		bubble.className = "player-interact-bubble player-tab-interact-bubble";
 		bubble.textContent = "e";
+		document.body.append(bubble);
+		return bubble;
+	})();
+	const playerIdleHintBubble = (() => {
+		const existingBubble = document.querySelector(".player-idle-hint-bubble");
+		if (existingBubble instanceof HTMLElement) {
+			return existingBubble;
+		}
+
+		if (!document.body) {
+			return null;
+		}
+
+		const bubble = document.createElement("div");
+		bubble.className = "player-interact-bubble player-idle-hint-bubble";
+		bubble.textContent = "w";
 		document.body.append(bubble);
 		return bubble;
 	})();
@@ -954,6 +981,44 @@ function initializePlayerMovement(player, runnerSquare) {
 		}
 	};
 
+	const saveIdleHintState = () => {
+		writeStorageItem(
+			sessionStorage,
+			PLAYER_IDLE_HINT_STATE_KEY,
+			JSON.stringify({
+				nextIdleHintAtEpochMs,
+				idleHintVisibleUntilEpochMs,
+				hasPlayerMovementStarted,
+			}),
+		);
+	};
+
+	const restoreIdleHintState = () => {
+		const rawState = readStorageItem(sessionStorage, PLAYER_IDLE_HINT_STATE_KEY);
+		if (!rawState) {
+			return;
+		}
+
+		try {
+			const parsedState = JSON.parse(rawState);
+			if (!parsedState || typeof parsedState !== "object") {
+				return;
+			}
+
+			const savedNextIdleHintAtEpochMs = Number(parsedState.nextIdleHintAtEpochMs);
+			const savedIdleHintVisibleUntilEpochMs = Number(parsedState.idleHintVisibleUntilEpochMs);
+			if (Number.isFinite(savedNextIdleHintAtEpochMs)) {
+				nextIdleHintAtEpochMs = savedNextIdleHintAtEpochMs;
+			}
+			if (Number.isFinite(savedIdleHintVisibleUntilEpochMs)) {
+				idleHintVisibleUntilEpochMs = savedIdleHintVisibleUntilEpochMs;
+			}
+
+			hasPlayerMovementStarted = parsedState.hasPlayerMovementStarted === true;
+		} catch {
+		}
+	};
+
 	const hidePlayerInteractBubble = () => {
 		if (!(playerInteractBubble instanceof HTMLElement)) {
 			return;
@@ -961,6 +1026,22 @@ function initializePlayerMovement(player, runnerSquare) {
 
 		playerInteractBubble.classList.remove("visible");
 		hasPlayerInteractBubbleAnchor = false;
+	};
+
+	const hidePlayerIdleHintBubble = () => {
+		if (!(playerIdleHintBubble instanceof HTMLElement)) {
+			return;
+		}
+
+		playerIdleHintBubble.classList.remove("visible");
+		hasIdleHintBubbleAnchor = false;
+		idleHintVisibleUntilEpochMs = 0;
+	};
+
+	const scheduleNextIdleHint = (currentEpochMs) => {
+		const delayRangeMs = PLAYER_IDLE_HINT_REPEAT_MAX_DELAY_MS - PLAYER_IDLE_HINT_REPEAT_MIN_DELAY_MS;
+		const randomDelayMs = PLAYER_IDLE_HINT_REPEAT_MIN_DELAY_MS + Math.random() * delayRangeMs;
+		nextIdleHintAtEpochMs = currentEpochMs + randomDelayMs;
 	};
 
 	const updatePlayerInteractBubble = (playerCenterX, playerCenterY, visualsCenterX, visualsCenterY) => {
@@ -989,6 +1070,56 @@ function initializePlayerMovement(player, runnerSquare) {
 		const pointerAngleDeg =
 			(Math.atan2(visualsCenterY - bubbleCenterY, visualsCenterX - bubbleCenterX) * 180) / Math.PI;
 		playerInteractBubble.style.setProperty("--player-bubble-pointer-angle", `${pointerAngleDeg}deg`);
+	};
+
+	const updatePlayerIdleHintBubble = (playerCenterX, playerCenterY, visualsCenterX, visualsCenterY) => {
+		if (!(playerIdleHintBubble instanceof HTMLElement)) {
+			return;
+		}
+
+		const currentEpochMs = Date.now();
+
+		if (hasPlayerMovementStarted) {
+			hidePlayerIdleHintBubble();
+			return;
+		}
+
+		const isBubbleVisible = playerIdleHintBubble.classList.contains("visible");
+		if (isBubbleVisible && idleHintVisibleUntilEpochMs <= currentEpochMs) {
+			hidePlayerIdleHintBubble();
+			scheduleNextIdleHint(currentEpochMs);
+			saveIdleHintState();
+			return;
+		}
+
+		if (!isBubbleVisible && currentEpochMs >= nextIdleHintAtEpochMs) {
+			const randomIndex = Math.floor(Math.random() * PLAYER_IDLE_HINT_INPUT_OPTIONS.length);
+			playerIdleHintBubble.textContent = PLAYER_IDLE_HINT_INPUT_OPTIONS[randomIndex] ?? "w";
+			idleHintVisibleUntilEpochMs = currentEpochMs + PLAYER_IDLE_HINT_DURATION_MS;
+			hasIdleHintBubbleAnchor = false;
+			saveIdleHintState();
+		}
+
+		if (idleHintVisibleUntilEpochMs <= currentEpochMs) {
+			return;
+		}
+
+		if (!hasIdleHintBubbleAnchor) {
+			idleHintBubbleAngleRad = Math.random() * Math.PI * 2;
+			hasIdleHintBubbleAnchor = true;
+		}
+
+		playerIdleHintBubble.classList.add("visible");
+		const bubbleRect = playerIdleHintBubble.getBoundingClientRect();
+		const bubbleCenterX = playerCenterX + Math.cos(idleHintBubbleAngleRad) * PLAYER_INTERACT_BUBBLE_RADIUS_FROM_PLAYER_PX;
+		const bubbleCenterY = playerCenterY + Math.sin(idleHintBubbleAngleRad) * PLAYER_INTERACT_BUBBLE_RADIUS_FROM_PLAYER_PX;
+		const bubbleX = bubbleCenterX - bubbleRect.width / 2;
+		const bubbleY = bubbleCenterY - bubbleRect.height / 2;
+		playerIdleHintBubble.style.transform = `translate(${bubbleX}px, ${bubbleY}px)`;
+
+		const pointerAngleDeg =
+			(Math.atan2(visualsCenterY - bubbleCenterY, visualsCenterX - bubbleCenterX) * 180) / Math.PI;
+		playerIdleHintBubble.style.setProperty("--player-bubble-pointer-angle", `${pointerAngleDeg}deg`);
 	};
 
 	const spawnBullet = (directionX, directionY) => {
@@ -1277,6 +1408,10 @@ function initializePlayerMovement(player, runnerSquare) {
 		const { directionX, directionY } = getDirection();
 		const hasDirectionalInput = directionX !== 0 || directionY !== 0;
 		if (hasDirectionalInput) {
+			if (!hasPlayerMovementStarted) {
+				hasPlayerMovementStarted = true;
+				saveIdleHintState();
+			}
 			hasReceivedDirectionalInput = true;
 			lastDirectionalInputTimestampMs = timestampMs;
 		}
@@ -1344,8 +1479,10 @@ function initializePlayerMovement(player, runnerSquare) {
 				visualsCenterY,
 			);
 			updatePlayerInteractBubble(playerCenterX, playerCenterY, visualsCenterX, visualsCenterY);
+			updatePlayerIdleHintBubble(playerCenterX, playerCenterY, visualsCenterX, visualsCenterY);
 		} else {
 			hidePlayerInteractBubble();
+			hidePlayerIdleHintBubble();
 		}
 
 		savePlayerState();
@@ -1430,6 +1567,7 @@ function initializePlayerMovement(player, runnerSquare) {
 	}
 
 	restoreInputCarryState();
+	restoreIdleHintState();
 
 	document.addEventListener("keydown", handleKeyDown);
 	document.addEventListener("keyup", handleKeyUp);
@@ -1441,6 +1579,7 @@ function initializePlayerMovement(player, runnerSquare) {
 	});
 	window.addEventListener("pagehide", savePlayerState);
 	window.addEventListener("pagehide", saveInputCarryState);
+	window.addEventListener("pagehide", saveIdleHintState);
 	if (!hasRestoredPlayerState) {
 		alignPlayerWithSquareStart();
 		savePlayerState();
