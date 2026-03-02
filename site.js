@@ -20,6 +20,8 @@ const BOTTOM_CIRCLE_SEEK_MAX_SPEED_PX_PER_SECOND = 140;
 const BOTTOM_CIRCLE_SEEK_ACCELERATION_PX_PER_SECOND_SQUARED = 220;
 const BOTTOM_CIRCLE_SEEK_IDLE_DELAY_MS = 2000;
 const BOTTOM_SQUARE_RUNNER_SPEED_PX_PER_SECOND = 100;
+const BOTTOM_SQUARE_RUNNER_STATE_KEY = "bottomSquareRunnerState";
+const BOTTOM_CIRCLE_STATE_KEY = "bottomCircleState";
 
 function clampZoom(level) {
 	return Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, level));
@@ -223,11 +225,48 @@ function initializeTabSelectionPersistence() {
 		return;
 	}
 
+	const isEditableTarget = (target) => {
+		if (!(target instanceof HTMLElement)) {
+			return false;
+		}
+
+		if (target.isContentEditable) {
+			return true;
+		}
+
+		const editableTags = ["INPUT", "TEXTAREA", "SELECT"];
+		return editableTags.includes(target.tagName);
+	};
+
 	initializeResponsiveMenu(siteNav);
 	applySavedSelectedTabTransform();
 	siteNav.addEventListener("click", saveSelectedTabTransform);
 
 	const tabs = Array.from(siteNav.querySelectorAll("a"));
+	let pressedKeyboardDigit = null;
+	let pressedKeyboardTab = null;
+
+	const applyKeyboardPressTilt = (tab) => {
+		const pressTilt = Math.random() * (TAB_ROTATION_MAX - TAB_ROTATION_MIN) + TAB_ROTATION_MIN;
+		const pressTranslateX = (Math.random() * 2 - 1) * TAB_PRESS_TRANSLATE_X_MAX;
+		const pressTranslateY = (Math.random() * 2 - 1) * TAB_PRESS_TRANSLATE_Y_MAX;
+		tab.style.setProperty("--tab-press-tilt", `${pressTilt}deg`);
+		tab.style.setProperty("--tab-press-translate-x", `${pressTranslateX}px`);
+		tab.style.setProperty("--tab-press-translate-y", `${pressTranslateY}px`);
+		tab.style.setProperty("--tab-phase-start-x", `${Math.floor(Math.random() * 360)}deg`);
+		tab.style.setProperty("--tab-phase-start-y", `${Math.floor(Math.random() * 360)}deg`);
+		tab.classList.add("keyboard-pressed");
+	};
+
+	const clearKeyboardPressedTab = () => {
+		if (pressedKeyboardTab instanceof HTMLAnchorElement) {
+			pressedKeyboardTab.classList.remove("keyboard-pressed");
+		}
+
+		pressedKeyboardDigit = null;
+		pressedKeyboardTab = null;
+	};
+
 	tabs.forEach((tab) => {
 		let pressStartedFromTouch = false;
 
@@ -309,6 +348,67 @@ function initializeTabSelectionPersistence() {
 		tab.addEventListener("click", handleTabClick);
 		tab.addEventListener("blur", clearPressTilt);
 	});
+
+	document.addEventListener("keydown", (event) => {
+		if (event.ctrlKey || event.altKey || event.metaKey || isEditableTarget(event.target)) {
+			return;
+		}
+
+		if (event.repeat) {
+			return;
+		}
+
+		const digit = Number.parseInt(event.key, 10);
+		if (!Number.isInteger(digit) || digit < 1 || digit > 6) {
+			return;
+		}
+
+		const tab = tabs[digit - 1];
+		if (!(tab instanceof HTMLAnchorElement)) {
+			return;
+		}
+
+		event.preventDefault();
+		if (pressedKeyboardDigit !== null && pressedKeyboardDigit !== digit) {
+			clearKeyboardPressedTab();
+		}
+
+		pressedKeyboardDigit = digit;
+		pressedKeyboardTab = tab;
+		applyKeyboardPressTilt(tab);
+	});
+
+	document.addEventListener("keyup", (event) => {
+		const digit = Number.parseInt(event.key, 10);
+		if (!Number.isInteger(digit) || digit < 1 || digit > 6 || pressedKeyboardDigit !== digit) {
+			return;
+		}
+
+		const tabToSelect = pressedKeyboardTab;
+		pressedKeyboardDigit = null;
+		pressedKeyboardTab = null;
+
+		if (!(tabToSelect instanceof HTMLAnchorElement)) {
+			return;
+		}
+
+		event.preventDefault();
+		const randomRotation = Math.random() * (TAB_ROTATION_MAX - TAB_ROTATION_MIN) + TAB_ROTATION_MIN;
+		const destinationPath = getTabPathFromLink(tabToSelect);
+		sessionStorage.setItem(NEXT_TAB_ROTATION_KEY, `${randomRotation}deg`);
+		sessionStorage.setItem(NEXT_TAB_ROTATION_PATH_KEY, destinationPath);
+		tabToSelect.click();
+		setTimeout(() => {
+			tabToSelect.classList.remove("keyboard-pressed");
+		}, TAP_NAV_DELAY_MS);
+	});
+
+	window.addEventListener("blur", clearKeyboardPressedTab);
+	document.addEventListener("visibilitychange", () => {
+		if (document.hidden) {
+			clearKeyboardPressedTab();
+		}
+	});
 }
 
 function initializeBottomCircleDecoration() {
@@ -360,6 +460,45 @@ function initializeBottomSquareRunnerMovement(runnerSquare) {
 	let animationFrameId = 0;
 	let lastTimestampMs = 0;
 
+	const readSavedSquareState = () => {
+		const rawState = sessionStorage.getItem(BOTTOM_SQUARE_RUNNER_STATE_KEY);
+		if (!rawState) {
+			return null;
+		}
+
+		try {
+			const parsedState = JSON.parse(rawState);
+			if (!parsedState || typeof parsedState !== "object") {
+				return null;
+			}
+
+			const savedPositionX = Number(parsedState.positionX);
+			if (!Number.isFinite(savedPositionX)) {
+				return null;
+			}
+
+			const parsedDirectionX = Number(parsedState.directionX);
+			const savedDirectionX = parsedDirectionX === 1 || parsedDirectionX === -1 ? parsedDirectionX : -1;
+
+			return {
+				positionX: savedPositionX,
+				directionX: savedDirectionX,
+			};
+		} catch {
+			return null;
+		}
+	};
+
+	const saveSquareState = () => {
+		sessionStorage.setItem(
+			BOTTOM_SQUARE_RUNNER_STATE_KEY,
+			JSON.stringify({
+				positionX: currentPositionX,
+				directionX,
+			}),
+		);
+	};
+
 	const getSquareWidth = () => runnerSquare.getBoundingClientRect().width || 10;
 
 	const getMaxPositionX = () => Math.max(0, window.innerWidth - getSquareWidth());
@@ -372,11 +511,21 @@ function initializeBottomSquareRunnerMovement(runnerSquare) {
 		const maxPositionX = getMaxPositionX();
 		currentPositionX = Math.min(maxPositionX, Math.max(0, currentPositionX));
 		applySquarePosition();
+		saveSquareState();
 	};
 
 	const initializeStartPosition = () => {
+		const savedState = readSavedSquareState();
+		if (savedState) {
+			currentPositionX = savedState.positionX;
+			directionX = savedState.directionX;
+			clampPositionWithinBounds();
+			return;
+		}
+
 		currentPositionX = getMaxPositionX() / 2;
 		applySquarePosition();
+		saveSquareState();
 	};
 
 	const step = (timestampMs) => {
@@ -399,6 +548,7 @@ function initializeBottomSquareRunnerMovement(runnerSquare) {
 		}
 
 		applySquarePosition();
+		saveSquareState();
 		animationFrameId = window.requestAnimationFrame(step);
 	};
 
@@ -411,6 +561,7 @@ function initializeBottomSquareRunnerMovement(runnerSquare) {
 	};
 
 	window.addEventListener("resize", clampPositionWithinBounds);
+	window.addEventListener("pagehide", saveSquareState);
 	initializeStartPosition();
 	ensureAnimationLoop();
 }
@@ -424,11 +575,121 @@ function initializeBottomCircleMovement(parentCircle, runnerSquare) {
 	let offsetY = 0;
 	let velocityX = 0;
 	let velocityY = 0;
+	let childOffsetX = 0;
+	let childOffsetY = 0;
+	let childPhaseX = "0deg";
+	let childPhaseY = "0deg";
 	let animationFrameId = 0;
 	let lastTimestampMs = 0;
 	let lastDirectionalInputTimestampMs = performance.now();
 	let hasReceivedDirectionalInput = false;
 	const activeKeys = new Set();
+	const childCircle = parentCircle.querySelector(".bottom-circle-child");
+
+	const readSavedCircleState = () => {
+		const rawState = sessionStorage.getItem(BOTTOM_CIRCLE_STATE_KEY);
+		if (!rawState) {
+			return null;
+		}
+
+		try {
+			const parsedState = JSON.parse(rawState);
+			if (!parsedState || typeof parsedState !== "object") {
+				return null;
+			}
+
+			const savedOffsetX = Number(parsedState.offsetX);
+			const savedOffsetY = Number(parsedState.offsetY);
+			const savedVelocityX = Number(parsedState.velocityX);
+			const savedVelocityY = Number(parsedState.velocityY);
+			const savedChildOffsetX = Number(parsedState.childOffsetX);
+			const savedChildOffsetY = Number(parsedState.childOffsetY);
+			const savedChildPhaseX =
+				typeof parsedState.childPhaseX === "string" && parsedState.childPhaseX.trim().length > 0
+					? parsedState.childPhaseX
+					: "0deg";
+			const savedChildPhaseY =
+				typeof parsedState.childPhaseY === "string" && parsedState.childPhaseY.trim().length > 0
+					? parsedState.childPhaseY
+					: "0deg";
+
+			if (
+				!Number.isFinite(savedOffsetX) ||
+				!Number.isFinite(savedOffsetY) ||
+				!Number.isFinite(savedVelocityX) ||
+				!Number.isFinite(savedVelocityY) ||
+				!Number.isFinite(savedChildOffsetX) ||
+				!Number.isFinite(savedChildOffsetY)
+			) {
+				return null;
+			}
+
+			return {
+				offsetX: savedOffsetX,
+				offsetY: savedOffsetY,
+				velocityX: savedVelocityX,
+				velocityY: savedVelocityY,
+				childOffsetX: savedChildOffsetX,
+				childOffsetY: savedChildOffsetY,
+				childPhaseX: savedChildPhaseX,
+				childPhaseY: savedChildPhaseY,
+			};
+		} catch {
+			return null;
+		}
+	};
+
+	const captureChildCircleState = () => {
+		if (!(childCircle instanceof HTMLElement)) {
+			return;
+		}
+
+		const parentRect = parentCircle.getBoundingClientRect();
+		const childRect = childCircle.getBoundingClientRect();
+		const parentCenterX = parentRect.left + parentRect.width / 2;
+		const parentCenterY = parentRect.top + parentRect.height / 2;
+		const childCenterX = childRect.left + childRect.width / 2;
+		const childCenterY = childRect.top + childRect.height / 2;
+
+		childOffsetX = childCenterX - parentCenterX;
+		childOffsetY = childCenterY - parentCenterY;
+
+		const computedStyle = getComputedStyle(childCircle);
+		const nextChildPhaseX = computedStyle.getPropertyValue("--child-phase-x").trim();
+		const nextChildPhaseY = computedStyle.getPropertyValue("--child-phase-y").trim();
+		if (nextChildPhaseX) {
+			childPhaseX = nextChildPhaseX;
+		}
+		if (nextChildPhaseY) {
+			childPhaseY = nextChildPhaseY;
+		}
+	};
+
+	const applySavedChildPhase = () => {
+		if (!(childCircle instanceof HTMLElement)) {
+			return;
+		}
+
+		childCircle.style.setProperty("--child-phase-start-x", childPhaseX);
+		childCircle.style.setProperty("--child-phase-start-y", childPhaseY);
+	};
+
+	const saveCircleState = () => {
+		captureChildCircleState();
+		sessionStorage.setItem(
+			BOTTOM_CIRCLE_STATE_KEY,
+			JSON.stringify({
+				offsetX,
+				offsetY,
+				velocityX,
+				velocityY,
+				childOffsetX,
+				childOffsetY,
+				childPhaseX,
+				childPhaseY,
+			}),
+		);
+	};
 
 	const isEditableTarget = (target) => {
 		if (!(target instanceof HTMLElement)) {
@@ -567,6 +828,7 @@ function initializeBottomCircleMovement(parentCircle, runnerSquare) {
 		offsetX += velocityX * elapsedSeconds;
 		offsetY += velocityY * elapsedSeconds;
 		applyPosition();
+		saveCircleState();
 
 		animationFrameId = window.requestAnimationFrame(step);
 	};
@@ -607,10 +869,29 @@ function initializeBottomCircleMovement(parentCircle, runnerSquare) {
 		activeKeys.clear();
 	};
 
+	const savedState = readSavedCircleState();
+	const hasRestoredCircleState = Boolean(savedState);
+	if (savedState) {
+		offsetX = savedState.offsetX;
+		offsetY = savedState.offsetY;
+		velocityX = savedState.velocityX;
+		velocityY = savedState.velocityY;
+		childOffsetX = savedState.childOffsetX;
+		childOffsetY = savedState.childOffsetY;
+		childPhaseX = savedState.childPhaseX;
+		childPhaseY = savedState.childPhaseY;
+		applySavedChildPhase();
+		applyPosition();
+	}
+
 	document.addEventListener("keydown", handleKeyDown);
 	document.addEventListener("keyup", handleKeyUp);
 	window.addEventListener("blur", handleWindowBlur);
-	alignParentWithSquareStart();
+	window.addEventListener("pagehide", saveCircleState);
+	if (!hasRestoredCircleState) {
+		alignParentWithSquareStart();
+		saveCircleState();
+	}
 	ensureAnimationLoop();
 }
 

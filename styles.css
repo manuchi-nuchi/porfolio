@@ -41,6 +41,8 @@
 	--child-frequency-y: 1.731234;
 	--child-speed-x: 3s;
 	--child-speed-y: 3s;
+	--child-phase-start-x: 0deg;
+	--child-phase-start-y: 0deg;
 	--child-phase-x: 0deg;
 	--child-phase-y: 0deg;
 }
@@ -216,19 +218,19 @@
 
 @keyframes child-phase-x-loop {
 	0% {
-		--child-phase-x: 0deg;
+		--child-phase-x: var(--child-phase-start-x, 0deg);
 	}
 	100% {
-		--child-phase-x: 360deg;
+		--child-phase-x: calc(var(--child-phase-start-x, 0deg) + 360deg);
 	}
 }
 
 @keyframes child-phase-y-loop {
 	0% {
-		--child-phase-y: 0deg;
+		--child-phase-y: var(--child-phase-start-y, 0deg);
 	}
 	100% {
-		--child-phase-y: 360deg;
+		--child-phase-y: calc(var(--child-phase-start-y, 0deg) + 360deg);
 	}
 }
 
@@ -523,6 +525,18 @@ body {
 }
 
 .site-nav a.mobile-pressed {
+	color: #000000;
+}
+
+.site-nav a.keyboard-pressed::before {
+	background-color: #ffffff;
+	animation:
+		tab-phase-x-loop calc(var(--tab-speed-x) / var(--tab-frequency-x)) linear infinite,
+		tab-phase-y-loop calc(var(--tab-speed-y) / var(--tab-frequency-y)) linear infinite,
+		tab-tilt-loop 1.8s ease-in-out infinite;
+}
+
+.site-nav a.keyboard-pressed {
 	color: #000000;
 }
 /* #endregion */
