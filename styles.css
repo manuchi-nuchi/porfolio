@@ -343,11 +343,11 @@ body {
 	bottom: 12.5vh;
 	width: 10px;
 	height: 10px;
-	background: #ffffff00;
+	background: #ffffff;
 	z-index: 940;
 	pointer-events: none;
 	transform: translateX(calc(50vw - 5px));
-	animation: bottom-square-runner-loop 30s linear infinite;
+	animation: none;
 }
 
 /* #region Navigation */

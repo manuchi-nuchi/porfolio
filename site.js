@@ -19,6 +19,7 @@ const BOTTOM_CIRCLE_DECELERATION_PX_PER_SECOND_SQUARED = 300;
 const BOTTOM_CIRCLE_SEEK_MAX_SPEED_PX_PER_SECOND = 140;
 const BOTTOM_CIRCLE_SEEK_ACCELERATION_PX_PER_SECOND_SQUARED = 220;
 const BOTTOM_CIRCLE_SEEK_IDLE_DELAY_MS = 2000;
+const BOTTOM_SQUARE_RUNNER_SPEED_PX_PER_SECOND = 100;
 
 function clampZoom(level) {
 	return Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, level));
@@ -349,6 +350,71 @@ function initializeBottomSquareRunner() {
 	return runnerSquare;
 }
 
+function initializeBottomSquareRunnerMovement(runnerSquare) {
+	if (!(runnerSquare instanceof HTMLElement)) {
+		return;
+	}
+
+	let currentPositionX = 0;
+	let directionX = -1;
+	let animationFrameId = 0;
+	let lastTimestampMs = 0;
+
+	const getSquareWidth = () => runnerSquare.getBoundingClientRect().width || 10;
+
+	const getMaxPositionX = () => Math.max(0, window.innerWidth - getSquareWidth());
+
+	const applySquarePosition = () => {
+		runnerSquare.style.transform = `translateX(${currentPositionX}px)`;
+	};
+
+	const clampPositionWithinBounds = () => {
+		const maxPositionX = getMaxPositionX();
+		currentPositionX = Math.min(maxPositionX, Math.max(0, currentPositionX));
+		applySquarePosition();
+	};
+
+	const initializeStartPosition = () => {
+		currentPositionX = getMaxPositionX() / 2;
+		applySquarePosition();
+	};
+
+	const step = (timestampMs) => {
+		if (lastTimestampMs === 0) {
+			lastTimestampMs = timestampMs;
+		}
+
+		const elapsedSeconds = Math.min(50, timestampMs - lastTimestampMs) / 1000;
+		lastTimestampMs = timestampMs;
+
+		currentPositionX += directionX * BOTTOM_SQUARE_RUNNER_SPEED_PX_PER_SECOND * elapsedSeconds;
+
+		const maxPositionX = getMaxPositionX();
+		if (currentPositionX <= 0) {
+			currentPositionX = 0;
+			directionX = 1;
+		} else if (currentPositionX >= maxPositionX) {
+			currentPositionX = maxPositionX;
+			directionX = -1;
+		}
+
+		applySquarePosition();
+		animationFrameId = window.requestAnimationFrame(step);
+	};
+
+	const ensureAnimationLoop = () => {
+		if (animationFrameId !== 0) {
+			return;
+		}
+
+		animationFrameId = window.requestAnimationFrame(step);
+	};
+
+	window.addEventListener("resize", clampPositionWithinBounds);
+	initializeStartPosition();
+	ensureAnimationLoop();
+}
+
 function initializeBottomCircleMovement(parentCircle, runnerSquare) {
 	if (!(parentCircle instanceof HTMLElement)) {
 		return;
@@ -551,6 +617,7 @@ function initializeBottomCircleMovement(parentCircle, runnerSquare) {
 function initializeSiteUi() {
 	const parentCircle = initializeBottomCircleDecoration();
 	const runnerSquare = initializeBottomSquareRunner();
+	initializeBottomSquareRunnerMovement(runnerSquare);
 	initializeBottomCircleMovement(parentCircle, runnerSquare);
 	initializeTabSelectionPersistence();
 }
