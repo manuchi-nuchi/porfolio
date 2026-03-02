@@ -1610,62 +1610,6 @@ function initializeSiteUi() {
 		initializeTabSelectionPersistence();
 	} catch {
 	}
-
-	try {
-		initializeTrajectoryLinePositioning();
-	} catch {
-	}
-}
-
-function initializeTrajectoryLinePositioning() {
-	if (!document.body.classList.contains("trajectory-page")) {
-		return;
-	}
-
-	const siteNav = document.querySelector(".site-nav");
-	if (!(siteNav instanceof HTMLElement)) {
-		return;
-	}
-
-	const updateLinePosition = () => {
-		const trajectoryTab = document.querySelector('.site-nav a[href$="trajectory.html"]');
-		if (!(trajectoryTab instanceof HTMLElement)) {
-			return;
-		}
-
-		const tabRect = trajectoryTab.getBoundingClientRect();
-		if (tabRect.width <= 0) {
-			return;
-		}
-		const navRect = siteNav.getBoundingClientRect();
-		if (navRect.width <= 0) {
-			return;
-		}
-
-		const centerXWithinNav = tabRect.left + tabRect.width / 2 - navRect.left;
-		siteNav.style.setProperty("--trajectory-line-x", `${centerXWithinNav}px`);
-		siteNav.style.setProperty("--trajectory-line-top-offset", `${navRect.top}px`);
-	};
-
-	window.updateTrajectoryLinePosition = updateLinePosition;
-
-	updateLinePosition();
-	window.requestAnimationFrame(updateLinePosition);
-	window.setTimeout(updateLinePosition, 200);
-	window.addEventListener("resize", updateLinePosition);
-	if (typeof ResizeObserver === "function") {
-		const layoutObserver = new ResizeObserver(updateLinePosition);
-		layoutObserver.observe(siteNav);
-	}
-	document.addEventListener("click", (event) => {
-		const toggleButton = event.target instanceof Element ? event.target.closest(".site-menu-toggle") : null;
-		if (!toggleButton) {
-			return;
-		}
-
-		window.requestAnimationFrame(updateLinePosition);
-		window.setTimeout(updateLinePosition, 180);
-	});
 }
 
 try {
