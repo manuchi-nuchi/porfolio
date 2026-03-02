@@ -8,6 +8,7 @@ const TAB_ROTATION_MIN = -5;
 const TAB_ROTATION_MAX = 5;
 const TAB_PRESS_TRANSLATE_X_MAX = 2;
 const TAB_PRESS_TRANSLATE_Y_MAX = 3;
+const TAB_PROXIMITY_SELECT_DISTANCE_PX = 60;
 const TAP_NAV_DELAY_MS = 140;
 const MOBILE_MENU_BREAKPOINT = 1000;
 const MIN_ZOOM = 0.7;
@@ -19,6 +20,8 @@ const PLAYER_DECELERATION_PX_PER_SECOND_SQUARED = 300;
 const PLAYER_SEEK_MAX_SPEED_PX_PER_SECOND = 140;
 const PLAYER_SEEK_ACCELERATION_PX_PER_SECOND_SQUARED = 220;
 const PLAYER_SEEK_IDLE_DELAY_MS = 2000;
+const PLAYER_INPUT_CARRY_STATE_KEY = "playerInputCarryState";
+const PLAYER_INPUT_CARRY_MAX_AGE_MS = 2000;
 const BOTTOM_SQUARE_RUNNER_SPEED_PX_PER_SECOND = 100;
 const BOTTOM_SQUARE_RUNNER_STATE_KEY = "bottomSquareRunnerState";
 const PLAYER_STATE_KEY = "bottomCircleState";
@@ -121,24 +124,19 @@ function getTabPathFromLink(link) {
 	return normalizePathname(new URL(link.href, window.location.href).pathname);
 }
 
-function saveSelectedTabTransform(event) {
-	const clickedTab = event.target.closest(".site-nav a");
-	if (!clickedTab) {
+function persistTabSelectionVisualState(tab) {
+	if (!(tab instanceof HTMLAnchorElement)) {
 		return;
 	}
 
-	if (clickedTab.classList.contains("secret-tab")) {
-		return;
-	}
-
-	const pseudoStyle = getComputedStyle(clickedTab, "::before");
+	const pseudoStyle = getComputedStyle(tab, "::before");
 	const currentTransform = pseudoStyle.transform;
 	const transformValue = currentTransform && currentTransform !== "none" ? currentTransform : "matrix(1, 0, 0, 1, 0, 0)";
 
-	const destinationPath = getTabPathFromLink(clickedTab);
+	const destinationPath = getTabPathFromLink(tab);
 	writeStorageItem(sessionStorage, `${TAB_TRANSFORM_STORAGE_PREFIX}${destinationPath}`, transformValue);
 
-	if (clickedTab.classList.contains("active")) {
+	if (tab.classList.contains("active")) {
 		const randomRotation = Math.random() * (TAB_ROTATION_MAX - TAB_ROTATION_MIN) + TAB_ROTATION_MIN;
 		writeStorageItem(sessionStorage, NEXT_TAB_ROTATION_KEY, `${randomRotation}deg`);
 		writeStorageItem(sessionStorage, NEXT_TAB_ROTATION_PATH_KEY, destinationPath);
@@ -150,6 +148,19 @@ function saveSelectedTabTransform(event) {
 	const randomHue = Math.floor(Math.random() * 360);
 	writeStorageItem(sessionStorage, NEXT_TAB_HUE_KEY, String(randomHue));
 	writeStorageItem(sessionStorage, NEXT_TAB_PATH_KEY, destinationPath);
+}
+
+function saveSelectedTabTransform(event) {
+	const clickedTab = event.target.closest(".site-nav a");
+	if (!clickedTab) {
+		return;
+	}
+
+	if (clickedTab.classList.contains("secret-tab")) {
+		return;
+	}
+
+	persistTabSelectionVisualState(clickedTab);
 }
 
 function applySavedSelectedTabTransform() {
@@ -279,6 +290,7 @@ function initializeTabSelectionPersistence() {
 	const secretTab = tabs.find((tab) => tab.classList.contains("secret-tab")) ?? null;
 	let pressedKeyboardDigit = null;
 	let pressedKeyboardTab = null;
+	let proximitySelectedTab = null;
 
 	const applyRandomTabPhaseSeed = (tab) => {
 		const randomPhaseX = Math.random() * 360;
@@ -311,6 +323,92 @@ function initializeTabSelectionPersistence() {
 		pressedKeyboardDigit = null;
 		pressedKeyboardTab = null;
 	};
+
+	const jumpToTab = (tabToSelect, options = {}) => {
+		if (!(tabToSelect instanceof HTMLAnchorElement)) {
+			return;
+		}
+
+		const destinationUrl = new URL(tabToSelect.href, window.location.href);
+		if (destinationUrl.href === window.location.href) {
+			return;
+		}
+
+		const allowSecretTab = options.allowSecretTab === true;
+		if (tabToSelect.classList.contains("secret-tab")) {
+			if (!allowSecretTab) {
+				return;
+			}
+
+			persistTabSelectionVisualState(tabToSelect);
+			window.location.href = destinationUrl.href;
+			return;
+		}
+
+		const randomRotation = Math.random() * (TAB_ROTATION_MAX - TAB_ROTATION_MIN) + TAB_ROTATION_MIN;
+		const destinationPath = getTabPathFromLink(tabToSelect);
+		writeStorageItem(sessionStorage, NEXT_TAB_ROTATION_KEY, `${randomRotation}deg`);
+		writeStorageItem(sessionStorage, NEXT_TAB_ROTATION_PATH_KEY, destinationPath);
+		tabToSelect.click();
+		setTimeout(() => {
+			tabToSelect.classList.remove("keyboard-pressed");
+		}, TAP_NAV_DELAY_MS);
+	};
+
+	const clearProximitySelectedTab = () => {
+		if (proximitySelectedTab instanceof HTMLAnchorElement) {
+			proximitySelectedTab.classList.remove("proximity-hover");
+		}
+
+		proximitySelectedTab = null;
+	};
+
+	const updateProximitySelectedTab = (centerX, centerY) => {
+		if (!Number.isFinite(centerX) || !Number.isFinite(centerY)) {
+			clearProximitySelectedTab();
+			return;
+		}
+
+		let nextTab = null;
+		let nearestDistance = Number.POSITIVE_INFINITY;
+
+		tabs.forEach((tab) => {
+			if (!(tab instanceof HTMLAnchorElement)) {
+				return;
+			}
+
+			const bounds = tab.getBoundingClientRect();
+			if (bounds.width <= 0 || bounds.height <= 0) {
+				return;
+			}
+
+			const tabCenterX = bounds.left + bounds.width / 2;
+			const tabCenterY = bounds.top + bounds.height / 2;
+			const distance = Math.hypot(centerX - tabCenterX, centerY - tabCenterY);
+			if (distance < nearestDistance) {
+				nearestDistance = distance;
+				nextTab = tab;
+			}
+		});
+
+		if (nearestDistance > TAB_PROXIMITY_SELECT_DISTANCE_PX || !(nextTab instanceof HTMLAnchorElement)) {
+			clearProximitySelectedTab();
+			return;
+		}
+
+		if (proximitySelectedTab === nextTab) {
+			return;
+		}
+
+		clearProximitySelectedTab();
+		proximitySelectedTab = nextTab;
+
+		applyRandomTabPhaseSeed(nextTab);
+
+		nextTab.classList.add("proximity-hover");
+	};
+
+	window.updateTabProximityFromPlayerVisuals = updateProximitySelectedTab;
 
 	tabs.forEach((tab) => {
 		let pressStartedFromTouch = false;
@@ -443,6 +541,16 @@ function initializeTabSelectionPersistence() {
 			return;
 		}
 
+		if (event.key.toLowerCase() === "e") {
+			if (!(proximitySelectedTab instanceof HTMLAnchorElement)) {
+				return;
+			}
+
+			event.preventDefault();
+			jumpToTab(proximitySelectedTab, { allowSecretTab: true });
+			return;
+		}
+
 		const digit = Number.parseInt(event.key, 10);
 		if (!Number.isInteger(digit)) {
 			return;
@@ -530,20 +638,14 @@ function initializeTabSelectionPersistence() {
 		}
 
 		event.preventDefault();
-		const randomRotation = Math.random() * (TAB_ROTATION_MAX - TAB_ROTATION_MIN) + TAB_ROTATION_MIN;
-		const destinationPath = getTabPathFromLink(tabToSelect);
-		writeStorageItem(sessionStorage, NEXT_TAB_ROTATION_KEY, `${randomRotation}deg`);
-		writeStorageItem(sessionStorage, NEXT_TAB_ROTATION_PATH_KEY, destinationPath);
-		tabToSelect.click();
-		setTimeout(() => {
-			tabToSelect.classList.remove("keyboard-pressed");
-		}, TAP_NAV_DELAY_MS);
+		jumpToTab(tabToSelect);
 	});
 
 	window.addEventListener("blur", clearKeyboardPressedTab);
 	document.addEventListener("visibilitychange", () => {
 		if (document.hidden) {
 			clearKeyboardPressedTab();
+			clearProximitySelectedTab();
 		}
 	});
 }
@@ -722,7 +824,63 @@ function initializePlayerMovement(player, runnerSquare) {
 	let lastDirectionalInputTimestampMs = performance.now();
 	let hasReceivedDirectionalInput = false;
 	const activeKeys = new Set();
+	const restoredCarryKeys = new Set();
+	let restoredCarryExpiresAtMs = 0;
 	const playerVisuals = player.querySelector(".player-visuals");
+
+	const saveInputCarryState = () => {
+		if (activeKeys.size === 0) {
+			removeStorageItem(sessionStorage, PLAYER_INPUT_CARRY_STATE_KEY);
+			return;
+		}
+
+		writeStorageItem(
+			sessionStorage,
+			PLAYER_INPUT_CARRY_STATE_KEY,
+			JSON.stringify({
+				keys: Array.from(activeKeys),
+				timestampMs: Date.now(),
+			}),
+		);
+	};
+
+	const restoreInputCarryState = () => {
+		const rawState = readStorageItem(sessionStorage, PLAYER_INPUT_CARRY_STATE_KEY);
+		if (!rawState) {
+			return;
+		}
+
+		removeStorageItem(sessionStorage, PLAYER_INPUT_CARRY_STATE_KEY);
+
+		try {
+			const parsedState = JSON.parse(rawState);
+			if (!parsedState || typeof parsedState !== "object") {
+				return;
+			}
+
+			const carryTimestampMs = Number(parsedState.timestampMs);
+			const keys = Array.isArray(parsedState.keys) ? parsedState.keys : [];
+			if (!Number.isFinite(carryTimestampMs)) {
+				return;
+			}
+
+			if (Date.now() - carryTimestampMs > PLAYER_INPUT_CARRY_MAX_AGE_MS) {
+				return;
+			}
+
+			keys.forEach((key) => {
+				if (key === "w" || key === "a" || key === "s" || key === "d") {
+					activeKeys.add(key);
+					restoredCarryKeys.add(key);
+				}
+			});
+
+			if (restoredCarryKeys.size > 0) {
+				restoredCarryExpiresAtMs = performance.now() + PLAYER_INPUT_CARRY_MAX_AGE_MS;
+			}
+		} catch {
+		}
+	};
 
 	const readSavedPlayerState = () => {
 		const rawState = readStorageItem(sessionStorage, PLAYER_STATE_KEY);
@@ -928,6 +1086,14 @@ function initializePlayerMovement(player, runnerSquare) {
 			lastTimestampMs = timestampMs;
 		}
 
+		if (restoredCarryKeys.size > 0 && timestampMs >= restoredCarryExpiresAtMs) {
+			restoredCarryKeys.forEach((key) => {
+				activeKeys.delete(key);
+			});
+			restoredCarryKeys.clear();
+			saveInputCarryState();
+		}
+
 		const elapsedSeconds = Math.min(50, timestampMs - lastTimestampMs) / 1000;
 		lastTimestampMs = timestampMs;
 
@@ -941,16 +1107,21 @@ function initializePlayerMovement(player, runnerSquare) {
 		const isSeekDelayElapsed = timestampMs - lastDirectionalInputTimestampMs >= PLAYER_SEEK_IDLE_DELAY_MS;
 		const shouldSeekSquare =
 			!hasDirectionalInput && (!hasReceivedDirectionalInput || isSeekDelayElapsed);
-		let targetVelocityX = 0;
-		let targetVelocityY = 0;
 
 		if (hasDirectionalInput) {
 			const directionMagnitude = Math.hypot(directionX, directionY) || 1;
 			const normalizedDirectionX = directionX / directionMagnitude;
 			const normalizedDirectionY = directionY / directionMagnitude;
 
-			targetVelocityX = normalizedDirectionX * PLAYER_MOVE_SPEED_PX_PER_SECOND;
-			targetVelocityY = normalizedDirectionY * PLAYER_MOVE_SPEED_PX_PER_SECOND;
+			velocityX += normalizedDirectionX * PLAYER_ACCELERATION_PX_PER_SECOND_SQUARED * elapsedSeconds;
+			velocityY += normalizedDirectionY * PLAYER_ACCELERATION_PX_PER_SECOND_SQUARED * elapsedSeconds;
+
+			const currentSpeed = Math.hypot(velocityX, velocityY);
+			if (currentSpeed > PLAYER_MOVE_SPEED_PX_PER_SECOND) {
+				const speedScale = PLAYER_MOVE_SPEED_PX_PER_SECOND / currentSpeed;
+				velocityX *= speedScale;
+				velocityY *= speedScale;
+			}
 		} else if (shouldSeekSquare && runnerSquare instanceof HTMLElement) {
 			const parentRect = player.getBoundingClientRect();
 			const squareRect = runnerSquare.getBoundingClientRect();
@@ -967,33 +1138,31 @@ function initializePlayerMovement(player, runnerSquare) {
 				const seekDirectionX = deltaX / distance;
 				const seekDirectionY = deltaY / distance;
 				const seekSpeed = Math.min(PLAYER_SEEK_MAX_SPEED_PX_PER_SECOND, distance * 1.6);
-				targetVelocityX = seekDirectionX * seekSpeed;
-				targetVelocityY = seekDirectionY * seekSpeed;
+				const targetVelocityX = seekDirectionX * seekSpeed;
+				const targetVelocityY = seekDirectionY * seekSpeed;
+				const seekAccelerationPerFrame = PLAYER_SEEK_ACCELERATION_PX_PER_SECOND_SQUARED * elapsedSeconds;
+				velocityX = moveToward(velocityX, targetVelocityX, seekAccelerationPerFrame);
+				velocityY = moveToward(velocityY, targetVelocityY, seekAccelerationPerFrame);
 			}
+		} else {
+			const decelerationPerFrame = PLAYER_DECELERATION_PX_PER_SECOND_SQUARED * elapsedSeconds;
+			velocityX = moveToward(velocityX, 0, decelerationPerFrame);
+			velocityY = moveToward(velocityY, 0, decelerationPerFrame);
 		}
-
-		const accelerationPerFrame = PLAYER_ACCELERATION_PX_PER_SECOND_SQUARED * elapsedSeconds;
-		const decelerationPerFrame = PLAYER_DECELERATION_PX_PER_SECOND_SQUARED * elapsedSeconds;
-		const seekAccelerationPerFrame = PLAYER_SEEK_ACCELERATION_PX_PER_SECOND_SQUARED * elapsedSeconds;
-
-		let velocityStepX = decelerationPerFrame;
-		let velocityStepY = decelerationPerFrame;
-
-		if (hasDirectionalInput) {
-			velocityStepX = accelerationPerFrame;
-			velocityStepY = accelerationPerFrame;
-		} else if (shouldSeekSquare && runnerSquare instanceof HTMLElement) {
-			velocityStepX = seekAccelerationPerFrame;
-			velocityStepY = seekAccelerationPerFrame;
-		}
-
-		velocityX = moveToward(velocityX, targetVelocityX, velocityStepX);
-		velocityY = moveToward(velocityY, targetVelocityY, velocityStepY);
 
 		offsetX += velocityX * elapsedSeconds;
 		offsetY += velocityY * elapsedSeconds;
 		applyPosition();
 		clampPositionWithinViewport();
+
+		if (typeof window.updateTabProximityFromPlayerVisuals === "function" && playerVisuals instanceof HTMLElement) {
+			const visualsBounds = playerVisuals.getBoundingClientRect();
+			window.updateTabProximityFromPlayerVisuals(
+				visualsBounds.left + visualsBounds.width / 2,
+				visualsBounds.top + visualsBounds.height / 2,
+			);
+		}
+
 		savePlayerState();
 
 		animationFrameId = window.requestAnimationFrame(step);
@@ -1019,6 +1188,8 @@ function initializePlayerMovement(player, runnerSquare) {
 
 		event.preventDefault();
 		activeKeys.add(key);
+		restoredCarryKeys.delete(key);
+		saveInputCarryState();
 		ensureAnimationLoop();
 	};
 
@@ -1029,10 +1200,14 @@ function initializePlayerMovement(player, runnerSquare) {
 		}
 
 		activeKeys.delete(key);
+		restoredCarryKeys.delete(key);
+		saveInputCarryState();
 	};
 
 	const handleWindowBlur = () => {
 		activeKeys.clear();
+		restoredCarryKeys.clear();
+		saveInputCarryState();
 	};
 
 	const savedState = readSavedPlayerState();
@@ -1051,6 +1226,8 @@ function initializePlayerMovement(player, runnerSquare) {
 		clampPositionWithinViewport();
 	}
 
+	restoreInputCarryState();
+
 	document.addEventListener("keydown", handleKeyDown);
 	document.addEventListener("keyup", handleKeyUp);
 	window.addEventListener("blur", handleWindowBlur);
@@ -1060,6 +1237,7 @@ function initializePlayerMovement(player, runnerSquare) {
 		savePlayerState();
 	});
 	window.addEventListener("pagehide", savePlayerState);
+	window.addEventListener("pagehide", saveInputCarryState);
 	if (!hasRestoredPlayerState) {
 		alignPlayerWithSquareStart();
 		savePlayerState();

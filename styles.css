@@ -491,7 +491,20 @@ body {
 	animation-delay: 0s, 0s, var(--tab-tilt-delay, 0s);
 }
 
+.site-nav a:not(.active).proximity-hover::before {
+	background-color: #ffffff;
+	animation:
+		tab-phase-x-loop calc(var(--tab-speed-x) / var(--tab-frequency-x)) linear infinite,
+		tab-phase-y-loop calc(var(--tab-speed-y) / var(--tab-frequency-y)) linear infinite,
+		tab-tilt-loop 1.8s ease-in-out infinite;
+	animation-delay: 0s, 0s, var(--tab-tilt-delay, 0s);
+}
+
 .site-nav a:not(.active):hover {
+	color: #000000;
+}
+
+.site-nav a:not(.active).proximity-hover {
 	color: #000000;
 }
 
@@ -504,8 +517,21 @@ body {
 	animation: none;
 }
 
+.site-nav a.secret-tab:not(.active).proximity-hover::before {
+	background-color: #ffffff;
+	animation:
+		tab-phase-x-loop calc(var(--tab-speed-x) / var(--tab-frequency-x)) linear infinite,
+		tab-phase-y-loop calc(var(--tab-speed-y) / var(--tab-frequency-y)) linear infinite,
+		tab-tilt-loop 1.8s ease-in-out infinite;
+	animation-delay: 0s, 0s, var(--tab-tilt-delay, 0s);
+}
+
 .site-nav a.secret-tab:not(.active):hover {
 	color: #ffffff;
+}
+
+.site-nav a.secret-tab:not(.active).proximity-hover {
+	color: #000000;
 }
 
 .site-nav a.secret-tab.secret-key-hover::before {
