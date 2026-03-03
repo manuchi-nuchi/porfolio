@@ -18,7 +18,7 @@ function initializeTrajectoryPageBehavior() {
 	const YEAR_REVEAL_START_DELAY_MS = 500;
 	const YEAR_REVEAL_STAGGER_MS = 60;
 
-	const RECTANGLE_REVEAL_START_DELAY_MS = 700;
+	const RECTANGLE_REVEAL_START_DELAY_MS = 0;
 	const RECTANGLE_REVEAL_BAND_HEIGHT_PX = 200;
 	const RECTANGLE_REVEAL_SPEED_PX_PER_SECOND = 100;
 	const RECTANGLE_REVEAL_MAX_FPS = 24;
@@ -33,14 +33,14 @@ function initializeTrajectoryPageBehavior() {
     
 	const RECTANGLE_FIXED_WIDTH_PX = 100;
 	const TRAJECTORY_RECTANGLES_RIGHT = [
-		{ startYear: 2024, endYear: 2026, xOffsetPx: 120, title: "Aurora", description: "", shader: "aurora" },
-		{ startYear: 2021, endYear: 2023, xOffsetPx: 260, title: "Plasma", description: "", shader: "plasma" },
-		{ startYear: 2018, endYear: 2020, xOffsetPx: 190, title: "Neon", description: "", shader: "neon" },
+		{ startYear: 2024, endYear: 2026, xOffsetPx: 120, title: "Aurora", description: "" },
+		{ startYear: 2021, endYear: 2023, xOffsetPx: 260, title: "Plasma", description: "" },
+		{ startYear: 2018, endYear: 2020, xOffsetPx: 190, title: "Neon", description: "" },
 	];
 	const TRAJECTORY_RECTANGLES_LEFT = [
-		{ startYear: 2019, endYear: 2022, xOffsetPx: 120, title: "Scan", description: "", shader: "scan" },
-		{ startYear: 2018, endYear: 2023, xOffsetPx: 300, title: "Noise", description: "", shader: "noise" },
-		{ startYear: 2020, endYear: 2024, xOffsetPx: 450, title: "Pulse", description: "", shader: "pulse" },
+		{ startYear: 2019, endYear: 2022, xOffsetPx: 120, title: "Scan", description: "" },
+		{ startYear: 2018, endYear: 2023, xOffsetPx: 300, title: "Noise", description: "" },
+		{ startYear: 2020, endYear: 2024, xOffsetPx: 450, title: "Pulse", description: "" },
 	];
 	const TRAJECTORY_RECTANGLE_DEFINITIONS = [
 		...TRAJECTORY_RECTANGLES_RIGHT.map((definition) => ({ ...definition, side: "right" })),
@@ -258,11 +258,7 @@ function initializeTrajectoryPageBehavior() {
 		TRAJECTORY_RECTANGLE_DEFINITIONS.forEach((definition, index) => {
 			const rectangle = document.createElement("div");
 			rectangle.className = "trajectory-year-rectangle";
-			const shaderName =
-				typeof definition.shader === "string" && definition.shader.trim().length > 0
-					? definition.shader.trim().toLowerCase()
-					: "aurora";
-			rectangle.classList.add(`trajectory-year-rectangle--${shaderName}`);
+			rectangle.classList.add("trajectory-year-rectangle--aurora");
 			rectangle.style.setProperty("--trajectory-rectangle-base-hue", String(randomSaturatedHue()));
 			const highlightOverlay = document.createElement("div");
 			highlightOverlay.className = "trajectory-year-rectangle-highlight";
