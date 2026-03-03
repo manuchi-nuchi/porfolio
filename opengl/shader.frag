@@ -19,7 +19,12 @@ void main() {
     
     float V = clamp(((1.0 - v_uv.y) - uvA) / (uvB - uvA), 0.0, 1.0);
     
-    if (n < V) // already showing
+    if ((1.0 - v_uv.y) < uvB) // fully revealed
+    {
+        gl_FragColor = vec4(color, 1.0);
+        
+    }
+    else if (n < V) // transition zone
     {
         if (n > V - u_outlineWidth)
             color = vec3(1.0, 1.0, 1.0);

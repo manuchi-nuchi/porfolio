@@ -15,7 +15,7 @@ export async function fetchShaderSource(url) {
 export async function initOpenGLRedSquare(canvasId, vertUrl, fragUrl, perlinUrl = '../opengl/perlin_noise_100x500.png') {
     // Animation timing constants (from trajectory.js)
     const RECTANGLE_REVEAL_START_DELAY_MS = 0;
-    const RECTANGLE_REVEAL_SPEED_PX_PER_SECOND = 500;
+    const RECTANGLE_REVEAL_SPEED_PX_PER_SECOND = 100;
     const RECTANGLE_REVEAL_BAND_HEIGHT_PX = 100;
     const RECTANGLE_OULINE_WIDTH_PX = 10;
     // For a 100px square, fade in over the same band height
@@ -167,6 +167,9 @@ export async function initOpenGLRedSquare(canvasId, vertUrl, fragUrl, perlinUrl 
         gl.uniform1f(uB, B);
         gl.clear(gl.COLOR_BUFFER_BIT);
         gl.drawArrays(gl.TRIANGLES, 0, 6);
+        
+        console.log('A:', A, 'B:', B);
+        
         if (B < 100) {
             requestAnimationFrame(animateFadeIn);
         }
