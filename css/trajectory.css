@@ -1,3 +1,28 @@
+@media (max-width: 1000px) {
+	body.trajectory-page::after {
+		content: '[\Apretty broken on narrow screens.\Aplease move to a\Awide-screen device.\Aif possible with keyboard\A]';
+		white-space: pre-line;
+		display: block;
+		position: fixed;
+		top: 0;
+		left: 0;
+		width: 100vw;
+		background: #ff0033;
+		color: #fff;
+		font-size: 1.1rem;
+		font-weight: bold;
+		text-align: center;
+		z-index: 9999;
+		padding: 0.7em 0.5em 0.7em 0.5em;
+		box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+		letter-spacing: 0.01em;
+		opacity: 0.5;
+		pointer-events: none;
+	}
+	body.trajectory-page {
+		padding-top: 3.2em;
+	}
+}
 @keyframes trajectory-line-reveal {
 	0% {
 		transform: scaleY(0);
