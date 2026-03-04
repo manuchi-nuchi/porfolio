@@ -607,6 +607,13 @@ function initializeTrajectoryPageBehavior() {
 			const centerY = firstYearY + index * YEAR_SPACING_PX;
 			yearTick.centerY = centerY;
 			yearTick.tick.style.top = `${centerY}px`;
+			// On narrow screens, always render at 50vw; else use linePageX
+			if (window.matchMedia("(max-width: 1000px)").matches) {
+				yearTick.tick.style.left = '50vw';
+			} else {
+				yearTick.tick.style.left = `${linePageX}px`;
+			}
+			yearTick.tick.style.transform = 'translateX(-50%)';
 			maxYearY = Math.max(maxYearY, centerY);
 		});
 		return maxYearY;
@@ -678,8 +685,13 @@ function initializeTrajectoryPageBehavior() {
 			return;
 		}
 
-		firstYearY = navRect.bottom + YEAR_START_OFFSET_PX;
 		const isNarrowScreen = window.matchMedia("(max-width: 1000px)").matches;
+		if (isNarrowScreen) {
+			firstYearY = 100; // Fixed offset from top for narrow screens
+		} else {
+			firstYearY = navRect.bottom + YEAR_START_OFFSET_PX;
+		}
+		
 		const lineViewportX = isNarrowScreen ? window.innerWidth / 2 : tabRect.left + tabRect.width / 2;
 		const centerXWithinNav = tabRect.left + tabRect.width / 2 - navRect.left;
 		linePageX = lineViewportX + window.scrollX;

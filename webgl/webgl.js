@@ -14,8 +14,8 @@ async function fetchShaderSource(url) {
 async function initWebGLRedSquare(canvasId, vertUrl, fragUrl, perlinUrl = '../webgl/perlin_noise_100x500.png') {
     // Animation timing constants (from trajectory.js)
     const RECTANGLE_REVEAL_START_DELAY_MS = 0;
-    const RECTANGLE_REVEAL_SPEED_PX_PER_SECOND = 100;
-    const RECTANGLE_REVEAL_BAND_HEIGHT_PX = 100;
+    const RECTANGLE_REVEAL_SPEED_PX_PER_SECOND = 200;
+    const RECTANGLE_REVEAL_BAND_HEIGHT_PX = 200;
     const RECTANGLE_OULINE_WIDTH_PX = 10;
     // For a 100px square, fade in over the same band height
     let revealStartTimestamp = null;
