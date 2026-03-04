@@ -14,6 +14,8 @@ async function fetchShaderSource(url) {
 async function initWebGLRedSquare(canvasId, vertUrl, fragUrl, perlinUrl = '../webgl/perlin_noise_100x500.png') {
     // Animation timing constants (from trajectory.js)
     const RECTANGLE_REVEAL_START_DELAY_MS = 0;
+    const REVEAL_BASE_YEAR = 2026;
+    const REVEAL_DELAY_PER_YEAR_MS = 300;
     const RECTANGLE_REVEAL_SPEED_PX_PER_SECOND = 200;
     const RECTANGLE_REVEAL_BAND_HEIGHT_PX = 200;
     const RECTANGLE_OULINE_WIDTH_PX = 10;
@@ -269,19 +271,24 @@ async function initWebGLRedSquare(canvasId, vertUrl, fragUrl, perlinUrl = '../we
     // Animation loop for fade-in
     const uA = gl.getUniformLocation(program, 'u_A');
     const uB = gl.getUniformLocation(program, 'u_B');
-    // Track per-square animation state
-    const squareAnimStates = squares.map(() => ({ startTimestamp: null, done: false }));
+    // Track per-square animation state and per-square delay
+    const squareAnimStates = squares.map((sq) => ({
+        startTimestamp: null,
+        done: false,
+        revealDelay: (typeof sq.endYear === 'number' ? (REVEAL_BASE_YEAR - sq.endYear) : 0) * REVEAL_DELAY_PER_YEAR_MS
+    }));
     function animateFadeIn(timestamp) {
         let allDone = true;
         for (let i = 0; i < squares.length; ++i) {
             if (squareAnimStates[i].done) continue;
             if (!squareAnimStates[i].startTimestamp) squareAnimStates[i].startTimestamp = timestamp;
-            const elapsed = Math.max(0, timestamp - squareAnimStates[i].startTimestamp - RECTANGLE_REVEAL_START_DELAY_MS) / 1000;
+            // Add per-square reveal delay
+            const delay = squareAnimStates[i].revealDelay || 0;
+            const elapsed = Math.max(0, timestamp - squareAnimStates[i].startTimestamp - RECTANGLE_REVEAL_START_DELAY_MS - delay) / 1000;
             const A = RECTANGLE_REVEAL_SPEED_PX_PER_SECOND * elapsed;
             const B = A - RECTANGLE_REVEAL_BAND_HEIGHT_PX;
             squares[i].A = A;
             squares[i].B = B;
-            
             if (B < squares[i].height) {
                 allDone = false;
             } else {
