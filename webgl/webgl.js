@@ -96,6 +96,15 @@ export async function initWebGLRedSquare(canvasId, vertUrl, fragUrl, perlinUrl =
     const uPerlin = gl.getUniformLocation(program, 'u_perlin');
     gl.uniform1i(uPerlin, 0);
 
+    // Square struct for color, dimensions, and page position
+    const square = {
+        width: 100,
+        height: 100,
+        color: [1.0, 0.0, 0.0], // red, RGB in 0..1
+        positionX: 100, // replaces rightOffsetPx
+        positionY: 0 // replaces pageY
+    };
+
     // Square vertices (centered, NDC)
     // Full-screen quad (NDC from -1 to +1)
     // 100x100 pixel square centered in canvas, with UVs from 0 to 1
@@ -133,31 +142,21 @@ export async function initWebGLRedSquare(canvasId, vertUrl, fragUrl, perlinUrl =
         canvasHeight = canvas.height;
         const ndcW = squareWidth / canvasWidth;
         const ndcH = squareHeight / canvasHeight;
-        const rightOffsetPx = 100;
-        const rightOffsetNDC = rightOffsetPx / canvasWidth;
+        const positionXNDC = square.positionX / canvasWidth;
+        // Set square.positionY to required height (year 2024 center minus half height)
         const year2024Y = getYear2024Y();
-        // Get page-relative top of canvas
+        square.positionY = year2024Y - square.height / 2;
         const canvasRect = canvas.getBoundingClientRect();
         const canvasTopY = canvasRect.top + window.scrollY;
-        // Get nav bar bottom in page space (for firstYearY logic)
-        const siteNav = document.querySelector('.site-nav');
-        let navBottomPageY = 0;
-        if (siteNav) {
-            const navRect = siteNav.getBoundingClientRect();
-            navBottomPageY = navRect.bottom + window.scrollY;
-        }
-        // firstYearY = navBottomPageY + YEAR_START_OFFSET_PX
-        // getYearCenterY(2024) = firstYearY + (YEAR_TOP - 2024) * YEAR_SPACING_PX
-        // localY = year2024Y - canvasTopY
-        const localY = year2024Y - canvasTopY;
+        const localY = square.positionY - canvasTopY + square.height / 2; // center of square
         const ndcY = 1 - 2 * (localY / canvasHeight);
         squareVertices = new Float32Array([
-            -ndcW + rightOffsetNDC, ndcY - ndcH, 0, 0,
-             ndcW + rightOffsetNDC, ndcY - ndcH, 1, 0,
-            -ndcW + rightOffsetNDC, ndcY + ndcH, 0, 1,
-            -ndcW + rightOffsetNDC, ndcY + ndcH, 0, 1,
-             ndcW + rightOffsetNDC, ndcY - ndcH, 1, 0,
-             ndcW + rightOffsetNDC, ndcY + ndcH, 1, 1
+            -ndcW + positionXNDC, ndcY - ndcH, 0, 0,
+             ndcW + positionXNDC, ndcY - ndcH, 1, 0,
+            -ndcW + positionXNDC, ndcY + ndcH, 0, 1,
+            -ndcW + positionXNDC, ndcY + ndcH, 0, 1,
+             ndcW + positionXNDC, ndcY - ndcH, 1, 0,
+             ndcW + positionXNDC, ndcY + ndcH, 1, 1
         ]);
     }
     // After program setup and before animation loop:
@@ -192,6 +191,10 @@ export async function initWebGLRedSquare(canvasId, vertUrl, fragUrl, perlinUrl =
     const uOutlineWidth = gl.getUniformLocation(program, 'u_outlineWidth');
     if (uOutlineWidth) gl.uniform1f(uOutlineWidth, RECTANGLE_OULINE_WIDTH_PX / 100.0);
 
+    // Add u_color uniform
+    const uColor = gl.getUniformLocation(program, 'u_color');
+    gl.uniform3fv(uColor, square.color);
+
     gl.viewport(0, 0, canvas.width, canvas.height);
     gl.clearColor(0, 0, 0, 0);
     // Initial draw (fully transparent)
@@ -219,6 +222,7 @@ export async function initWebGLRedSquare(canvasId, vertUrl, fragUrl, perlinUrl =
         updateSquareVertices();
         gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
         gl.bufferData(gl.ARRAY_BUFFER, squareVertices, gl.DYNAMIC_DRAW);
+        gl.uniform3fv(uColor, square.color);
         gl.clear(gl.COLOR_BUFFER_BIT);
         gl.drawArrays(gl.TRIANGLES, 0, 6);
     }
