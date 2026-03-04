@@ -10,6 +10,7 @@
 	<link rel="stylesheet" href="../css/trajectory.css?v=1" />
 </head>
 <body class="trajectory-page">
+	<canvas id="webgl-canvas" width="400" height="400"></canvas>
 	<nav class="site-nav" aria-label="Main navigation">
 		<a href="../index.html">home</a>
 		<a href="projects.html">projects</a>
@@ -19,8 +20,6 @@
 		<a href="contact.html">contact</a>
 		<a class="secret-tab" href="secret.html">?</a>
 	</nav>
-	</body>
-	<canvas id="webgl-canvas" width="400" height="400" style="position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:2000;"></canvas>
 	<script type="module">
 	import { initWebGLRedSquare } from '../webgl/webgl.js';
 	window.addEventListener('DOMContentLoaded', () => {

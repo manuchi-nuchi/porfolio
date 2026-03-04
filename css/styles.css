@@ -1,4 +1,3 @@
-
 * {
 	box-sizing: border-box;
 }
@@ -1025,3 +1024,19 @@ p + p {
 	box-shadow: 0 7px 16px rgba(0, 0, 0, 0.45);
 }
 /* #endregion */
+
+#webgl-canvas {
+  position: fixed !important;
+  left: 0 !important;
+  top: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  z-index: -1 !important;
+  pointer-events: none !important;
+  display: block !important;
+  background: transparent !important;
+}
+
+body.trajectory-page {
+  background: transparent !important;
+}

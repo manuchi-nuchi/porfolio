@@ -101,26 +101,70 @@ export async function initWebGLRedSquare(canvasId, vertUrl, fragUrl, perlinUrl =
     // 100x100 pixel square centered in canvas, with UVs from 0 to 1
     const squareWidth = 100;
     const squareHeight = 100;
-    // Ensure canvasWidth and canvasHeight are initialized before use
-    const canvasWidth = canvas.width;
-    const canvasHeight = canvas.height;
+    let canvasWidth = 0;
+    let canvasHeight = 0;
+    // Ensure canvas is sized to device pixels
+    function resizeCanvasToDisplaySize() {
+        const dpr = window.devicePixelRatio || 1;
+        const displayWidth = Math.floor(canvas.clientWidth * dpr);
+        const displayHeight = Math.floor(canvas.clientHeight * dpr);
+        if (canvas.width !== displayWidth || canvas.height !== displayHeight) {
+            canvas.width = displayWidth;
+            canvas.height = displayHeight;
+        }
+    }
+    resizeCanvasToDisplaySize();
+    window.addEventListener('resize', resizeCanvasToDisplaySize);
     // Compute NDC size for 100x100 square
-    const ndcW = squareWidth / canvasWidth;
-    const ndcH = squareHeight / canvasHeight;
+    const ndcW = squareWidth / canvas.width;
+    const ndcH = squareHeight / canvas.height;
     const rightOffsetPx = 100;
-    const rightOffsetNDC = rightOffsetPx / canvasWidth;
-    // Each vertex: [x, y, u, v]
-    const vertices = new Float32Array([
-        -ndcW + rightOffsetNDC, -ndcH, 0, 0,
-         ndcW + rightOffsetNDC, -ndcH, 1, 0,
-        -ndcW + rightOffsetNDC,  ndcH, 0, 1,
-        -ndcW + rightOffsetNDC,  ndcH, 0, 1,
-         ndcW + rightOffsetNDC, -ndcH, 1, 0,
-         ndcW + rightOffsetNDC,  ndcH, 1, 1
-    ]);
+    const rightOffsetNDC = rightOffsetPx / canvas.width;
+    // Compute Y position for year 2024
+    const year2024Y = getYear2024Y();
+    // Convert to NDC (WebGL: -1 at bottom, +1 at top)
+    // Canvas Y=0 is top, so NDC_Y = 1 - 2*(year2024Y/canvasHeight)
+    const ndcY = 1 - 2 * (year2024Y / canvas.height);
+    // Use this ndcY for all square vertices
+    let squareVertices = null;
+    function updateSquareVertices() {
+        resizeCanvasToDisplaySize();
+        canvasWidth = canvas.width;
+        canvasHeight = canvas.height;
+        const ndcW = squareWidth / canvasWidth;
+        const ndcH = squareHeight / canvasHeight;
+        const rightOffsetPx = 100;
+        const rightOffsetNDC = rightOffsetPx / canvasWidth;
+        const year2024Y = getYear2024Y();
+        // Get page-relative top of canvas
+        const canvasRect = canvas.getBoundingClientRect();
+        const canvasTopY = canvasRect.top + window.scrollY;
+        // Get nav bar bottom in page space (for firstYearY logic)
+        const siteNav = document.querySelector('.site-nav');
+        let navBottomPageY = 0;
+        if (siteNav) {
+            const navRect = siteNav.getBoundingClientRect();
+            navBottomPageY = navRect.bottom + window.scrollY;
+        }
+        // firstYearY = navBottomPageY + YEAR_START_OFFSET_PX
+        // getYearCenterY(2024) = firstYearY + (YEAR_TOP - 2024) * YEAR_SPACING_PX
+        // localY = year2024Y - canvasTopY
+        const localY = year2024Y - canvasTopY;
+        const ndcY = 1 - 2 * (localY / canvasHeight);
+        squareVertices = new Float32Array([
+            -ndcW + rightOffsetNDC, ndcY - ndcH, 0, 0,
+             ndcW + rightOffsetNDC, ndcY - ndcH, 1, 0,
+            -ndcW + rightOffsetNDC, ndcY + ndcH, 0, 1,
+            -ndcW + rightOffsetNDC, ndcY + ndcH, 0, 1,
+             ndcW + rightOffsetNDC, ndcY - ndcH, 1, 0,
+             ndcW + rightOffsetNDC, ndcY + ndcH, 1, 1
+        ]);
+    }
+    // After program setup and before animation loop:
+    updateSquareVertices();
     const buffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
-    gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
+    gl.bufferData(gl.ARRAY_BUFFER, squareVertices, gl.DYNAMIC_DRAW);
 
     const aPosition = gl.getAttribLocation(program, 'a_position');
     gl.enableVertexAttribArray(aPosition);
@@ -166,17 +210,39 @@ export async function initWebGLRedSquare(canvasId, vertUrl, fragUrl, perlinUrl =
         gl.useProgram(program);
         gl.uniform1f(uA, A);
         gl.uniform1f(uB, B);
-        gl.clear(gl.COLOR_BUFFER_BIT);
-        gl.drawArrays(gl.TRIANGLES, 0, 6);
-        
-        //console.log('A:', A, 'B:', B);
-        
+        redrawSquare();
         if (B < 100) {
             requestAnimationFrame(animateFadeIn);
         }
     }
+    function redrawSquare() {
+        updateSquareVertices();
+        gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+        gl.bufferData(gl.ARRAY_BUFFER, squareVertices, gl.DYNAMIC_DRAW);
+        gl.clear(gl.COLOR_BUFFER_BIT);
+        gl.drawArrays(gl.TRIANGLES, 0, 6);
+    }
     // Start animation after all setup is complete
     requestAnimationFrame(animateFadeIn);
+
+    // After all setup, ensure redraw on scroll/resize
+    window.addEventListener('scroll', redrawSquare);
+    window.addEventListener('resize', redrawSquare);
+}
+
+// Helper to get year 2024 Y position from trajectory.js
+function getYear2024Y() {
+    // These must match trajectory.js
+    const YEAR_TOP = 2026;
+    const YEAR_SPACING_PX = 100;
+    const YEAR_START_OFFSET_PX = 100;
+    const siteNav = document.querySelector('.site-nav');
+    if (!siteNav) return 0;
+    const navRect = siteNav.getBoundingClientRect();
+    // firstYearY logic: navRect.bottom + YEAR_START_OFFSET_PX
+    const firstYearY = navRect.bottom + YEAR_START_OFFSET_PX;
+    // getYearCenterY(2024):
+    return firstYearY + (YEAR_TOP - 2024) * YEAR_SPACING_PX;
 }
 
 // To use: call initWebGLRedSquare('webgl-canvas', 'webgl/shader.vert', 'webgl/shader.frag') after DOM is ready.
