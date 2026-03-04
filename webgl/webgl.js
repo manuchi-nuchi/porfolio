@@ -107,15 +107,16 @@ export async function initWebGLRedSquare(canvasId, vertUrl, fragUrl, perlinUrl =
     // Compute NDC size for 100x100 square
     const ndcW = squareWidth / canvasWidth;
     const ndcH = squareHeight / canvasHeight;
-    // Centered at (0,0)
+    const rightOffsetPx = 100;
+    const rightOffsetNDC = rightOffsetPx / canvasWidth;
     // Each vertex: [x, y, u, v]
     const vertices = new Float32Array([
-        -ndcW, -ndcH, 0, 0,
-         ndcW, -ndcH, 1, 0,
-        -ndcW,  ndcH, 0, 1,
-        -ndcW,  ndcH, 0, 1,
-         ndcW, -ndcH, 1, 0,
-         ndcW,  ndcH, 1, 1
+        -ndcW + rightOffsetNDC, -ndcH, 0, 0,
+         ndcW + rightOffsetNDC, -ndcH, 1, 0,
+        -ndcW + rightOffsetNDC,  ndcH, 0, 1,
+        -ndcW + rightOffsetNDC,  ndcH, 0, 1,
+         ndcW + rightOffsetNDC, -ndcH, 1, 0,
+         ndcW + rightOffsetNDC,  ndcH, 1, 1
     ]);
     const buffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
