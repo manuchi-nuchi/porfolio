@@ -20,11 +20,11 @@
 		<a class="secret-tab" href="secret.html">?</a>
 	</nav>
 	</body>
-	<canvas id="opengl-canvas" width="400" height="400" style="position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:2000;"></canvas>
+	<canvas id="webgl-canvas" width="400" height="400" style="position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:2000;"></canvas>
 	<script type="module">
-	import { initOpenGLRedSquare } from '../opengl/opengl.js';
+	import { initWebGLRedSquare } from '../webgl/webgl.js';
 	window.addEventListener('DOMContentLoaded', () => {
-		initOpenGLRedSquare('opengl-canvas', '../opengl/shader.vert', '../opengl/shader.frag', '../opengl/perlin_noise_100x500.png');
+		initWebGLRedSquare('webgl-canvas', '../webgl/shader.vert', '../webgl/shader.frag', '../webgl/perlin_noise_100x500.png');
 	});
 	</script>
 </body>

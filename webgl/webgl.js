@@ -1,4 +1,4 @@
-// opengl.js - minimal WebGL2 logic for a red square in the center
+// webgl.js - minimal WebGL2 logic for a red square in the center
 
 
 export async function fetchShaderSource(url) {
@@ -12,7 +12,7 @@ export async function fetchShaderSource(url) {
     }
 }
 
-export async function initOpenGLRedSquare(canvasId, vertUrl, fragUrl, perlinUrl = '../opengl/perlin_noise_100x500.png') {
+export async function initWebGLRedSquare(canvasId, vertUrl, fragUrl, perlinUrl = '../webgl/perlin_noise_100x500.png') {
     // Animation timing constants (from trajectory.js)
     const RECTANGLE_REVEAL_START_DELAY_MS = 0;
     const RECTANGLE_REVEAL_SPEED_PX_PER_SECOND = 100;
@@ -168,7 +168,7 @@ export async function initOpenGLRedSquare(canvasId, vertUrl, fragUrl, perlinUrl 
         gl.clear(gl.COLOR_BUFFER_BIT);
         gl.drawArrays(gl.TRIANGLES, 0, 6);
         
-        console.log('A:', A, 'B:', B);
+        //console.log('A:', A, 'B:', B);
         
         if (B < 100) {
             requestAnimationFrame(animateFadeIn);
@@ -178,4 +178,4 @@ export async function initOpenGLRedSquare(canvasId, vertUrl, fragUrl, perlinUrl 
     requestAnimationFrame(animateFadeIn);
 }
 
-// To use: call initOpenGLRedSquare('opengl-canvas', 'opengl/shader.vert', 'opengl/shader.frag') after DOM is ready.
+// To use: call initWebGLRedSquare('webgl-canvas', 'webgl/shader.vert', 'webgl/shader.frag') after DOM is ready.
