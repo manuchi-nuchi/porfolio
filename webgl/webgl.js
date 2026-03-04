@@ -168,7 +168,23 @@ export async function initWebGLRedSquare(canvasId, vertUrl, fragUrl, perlinUrl =
         ]);
     }
     // After program setup and before animation loop:
-    updateSquareVertices(squares[0], 2024);
+    // Initialize squareVertices with a default 100x100 square at center if not already set
+    if (!squareVertices) {
+        const cx = canvas.width / 2;
+        const cy = canvas.height / 2;
+        const hw = 100 / 2;
+        const hh = 100 / 2;
+        squareVertices = new Float32Array([
+            // Triangle 1
+            ((cx - hw) - canvas.width / 2) / (canvas.width / 2), ((cy - hh) - canvas.height / 2) / (canvas.height / 2), 0, 0,
+            ((cx + hw) - canvas.width / 2) / (canvas.width / 2), ((cy - hh) - canvas.height / 2) / (canvas.height / 2), 1, 0,
+            ((cx - hw) - canvas.width / 2) / (canvas.width / 2), ((cy + hh) - canvas.height / 2) / (canvas.height / 2), 0, 1,
+            // Triangle 2
+            ((cx - hw) - canvas.width / 2) / (canvas.width / 2), ((cy + hh) - canvas.height / 2) / (canvas.height / 2), 0, 1,
+            ((cx + hw) - canvas.width / 2) / (canvas.width / 2), ((cy - hh) - canvas.height / 2) / (canvas.height / 2), 1, 0,
+            ((cx + hw) - canvas.width / 2) / (canvas.width / 2), ((cy + hh) - canvas.height / 2) / (canvas.height / 2), 1, 1
+        ]);
+    }
     const buffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
     gl.bufferData(gl.ARRAY_BUFFER, squareVertices, gl.DYNAMIC_DRAW);
