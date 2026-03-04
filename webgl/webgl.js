@@ -96,14 +96,23 @@ export async function initWebGLRedSquare(canvasId, vertUrl, fragUrl, perlinUrl =
     const uPerlin = gl.getUniformLocation(program, 'u_perlin');
     gl.uniform1i(uPerlin, 0);
 
-    // Square struct for color, dimensions, and page position
-    const square = {
-        width: 100,
-        height: 100,
-        color: [1.0, 0.0, 0.0], // red, RGB in 0..1
-        positionX: 100, // replaces rightOffsetPx
-        positionY: 0 // replaces pageY
-    };
+    // Two square structs: red (right), blue (left)
+    const squares = [
+        {
+            width: 100,
+            height: 100,
+            color: [1.0, 0.0, 0.0], // red
+            positionX: 100, // right
+            positionY: 0
+        },
+        {
+            width: 100,
+            height: 100,
+            color: [0.0, 0.0, 1.0], // blue
+            positionX: -300, // left
+            positionY: 0
+        }
+    ];
 
     // Square vertices (centered, NDC)
     // Full-screen quad (NDC from -1 to +1)
@@ -136,21 +145,20 @@ export async function initWebGLRedSquare(canvasId, vertUrl, fragUrl, perlinUrl =
     const ndcY = 1 - 2 * (year2024Y / canvas.height);
     // Use this ndcY for all square vertices
     let squareVertices = null;
-    function updateSquareVertices() {
+    function updateSquareVertices(square, year) {
         resizeCanvasToDisplaySize();
         canvasWidth = canvas.width;
         canvasHeight = canvas.height;
-        const ndcW = squareWidth / canvasWidth;
-        const ndcH = squareHeight / canvasHeight;
+        const ndcW = square.width / canvasWidth;
+        const ndcH = square.height / canvasHeight;
         const positionXNDC = square.positionX / canvasWidth;
-        // Set square.positionY to required height (year 2024 center minus half height)
-        const year2024Y = getYear2024Y();
-        square.positionY = year2024Y - square.height / 2;
+        // Set square.positionY to required height (year center minus half height)
+        square.positionY = getYearCenterY(year) - square.height / 2;
         const canvasRect = canvas.getBoundingClientRect();
         const canvasTopY = canvasRect.top + window.scrollY;
         const localY = square.positionY - canvasTopY + square.height / 2; // center of square
         const ndcY = 1 - 2 * (localY / canvasHeight);
-        squareVertices = new Float32Array([
+        return new Float32Array([
             -ndcW + positionXNDC, ndcY - ndcH, 0, 0,
              ndcW + positionXNDC, ndcY - ndcH, 1, 0,
             -ndcW + positionXNDC, ndcY + ndcH, 0, 1,
@@ -160,7 +168,7 @@ export async function initWebGLRedSquare(canvasId, vertUrl, fragUrl, perlinUrl =
         ]);
     }
     // After program setup and before animation loop:
-    updateSquareVertices();
+    updateSquareVertices(squares[0], 2024);
     const buffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
     gl.bufferData(gl.ARRAY_BUFFER, squareVertices, gl.DYNAMIC_DRAW);
@@ -193,7 +201,7 @@ export async function initWebGLRedSquare(canvasId, vertUrl, fragUrl, perlinUrl =
 
     // Add u_color uniform
     const uColor = gl.getUniformLocation(program, 'u_color');
-    gl.uniform3fv(uColor, square.color);
+    gl.uniform3fv(uColor, squares[0].color);
 
     gl.viewport(0, 0, canvas.width, canvas.height);
     gl.clearColor(0, 0, 0, 0);
@@ -219,12 +227,16 @@ export async function initWebGLRedSquare(canvasId, vertUrl, fragUrl, perlinUrl =
         }
     }
     function redrawSquare() {
-        updateSquareVertices();
-        gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
-        gl.bufferData(gl.ARRAY_BUFFER, squareVertices, gl.DYNAMIC_DRAW);
-        gl.uniform3fv(uColor, square.color);
         gl.clear(gl.COLOR_BUFFER_BIT);
-        gl.drawArrays(gl.TRIANGLES, 0, 6);
+        // Red square at 2024, blue at 2021
+        const years = [2024, 2021];
+        for (let i = 0; i < squares.length; ++i) {
+            const squareVertices = updateSquareVertices(squares[i], years[i]);
+            gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+            gl.bufferData(gl.ARRAY_BUFFER, squareVertices, gl.DYNAMIC_DRAW);
+            gl.uniform3fv(uColor, squares[i].color);
+            gl.drawArrays(gl.TRIANGLES, 0, 6);
+        }
     }
     // Start animation after all setup is complete
     requestAnimationFrame(animateFadeIn);
@@ -247,6 +259,18 @@ function getYear2024Y() {
     const firstYearY = navRect.bottom + YEAR_START_OFFSET_PX;
     // getYearCenterY(2024):
     return firstYearY + (YEAR_TOP - 2024) * YEAR_SPACING_PX;
+}
+
+// Helper to get year center Y position
+function getYearCenterY(year) {
+    const YEAR_TOP = 2026;
+    const YEAR_SPACING_PX = 100;
+    const YEAR_START_OFFSET_PX = 100;
+    const siteNav = document.querySelector('.site-nav');
+    if (!siteNav) return 0;
+    const navRect = siteNav.getBoundingClientRect();
+    const firstYearY = navRect.bottom + YEAR_START_OFFSET_PX;
+    return firstYearY + (YEAR_TOP - year) * YEAR_SPACING_PX;
 }
 
 // To use: call initWebGLRedSquare('webgl-canvas', 'webgl/shader.vert', 'webgl/shader.frag') after DOM is ready.
