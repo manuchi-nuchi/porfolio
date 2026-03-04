@@ -124,14 +124,15 @@ async function initWebGLRedSquare(canvasId, vertUrl, fragUrl, perlinUrl = '../we
     } else {
         console.log('webgl.js: window.TRAJECTORY_RECTANGLE_DEFINITIONS', window.TRAJECTORY_RECTANGLE_DEFINITIONS);
     }
-    const squares = (window.TRAJECTORY_RECTANGLE_DEFINITIONS || []).map(rect => ({
-        width: 100,
-        height: 100,
-        color: randomColor(),
-        xOffsetPx: rect.side === 'left' ? -Math.abs(rect.xOffsetPx) : Math.abs(rect.xOffsetPx),
-        endYear: rect.endYear,
-        // positionY will be set dynamically in updateSquareVertices
-    }));
+        const squares = (window.TRAJECTORY_RECTANGLE_DEFINITIONS || []).map(rect => ({
+            color: randomColor(),
+            width: 100,
+            height: 100 * (rect.endYear - rect.startYear),
+            xOffsetPx: rect.side === 'left' ? -Math.abs(rect.xOffsetPx) : Math.abs(rect.xOffsetPx),
+            endYear: rect.endYear,
+            startYear: rect.startYear,
+            side: rect.side
+        }));
     console.log('webgl.js: squares', squares);
 
     // Square vertices (centered, NDC)
@@ -189,7 +190,9 @@ async function initWebGLRedSquare(canvasId, vertUrl, fragUrl, perlinUrl = '../we
         const centerX = canvas.width / 2 + square.xOffsetPx + (linePageX - canvasCenterPageX);
         const positionXNDC = (2 * centerX / canvasWidth) - 1;
         // Y logic unchanged
-            square.positionY = getYearCenterY(year) - square.height / 2 + 50; // Shifted 50px lower
+            // Adjust Y so the top stays at the same position as a 100x100 square
+            const heightAdjustment = (square.height - 100) / 2;
+            square.positionY = getYearCenterY(year) - square.height / 2 + 50 + heightAdjustment;
         const canvasTopY = canvasRect.top + window.scrollY;
         const localY = square.positionY - canvasTopY + square.height / 2; // center of square
         const ndcY = 1 - 2 * (localY / canvasHeight);

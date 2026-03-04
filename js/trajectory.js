@@ -33,7 +33,7 @@ function initializeTrajectoryPageBehavior() {
     
 	const RECTANGLE_FIXED_WIDTH_PX = 100;
 	const TRAJECTORY_RECTANGLES_RIGHT = [
-		{ startYear: 2024, endYear: 2026, xOffsetPx: 120, title: "Aurora", description: "" },
+		{ startYear: 2025, endYear: 2026, xOffsetPx: 120, title: "Aurora", description: "" },
 		{ startYear: 2021, endYear: 2023, xOffsetPx: 260, title: "Plasma", description: "" },
 		{ startYear: 2018, endYear: 2020, xOffsetPx: 190, title: "Neon", description: "" },
 	];
