@@ -1,3 +1,60 @@
+
+function showResizeDebugA() {
+	if (!document.body.classList.contains('trajectory-page')) return;
+	// Hide warning if narrow screen
+	if (window.innerWidth <= 1000) {
+		const oldWarn = document.getElementById('resize-broken-warning');
+		if (oldWarn) oldWarn.remove();
+		return;
+	}
+
+	// Remove any previous warning
+	const oldWarn = document.getElementById('resize-broken-warning');
+	if (oldWarn) oldWarn.remove();
+
+	// Find the nav tabs holder
+	const nav = document.querySelector('.site-nav');
+	if (nav) {
+		const warn = document.createElement('div');
+		warn.id = 'resize-broken-warning';
+		warn.textContent = '[ resizing broke the game. maybe change tabs again? ]';
+		warn.style.background = '#ff0033';
+		warn.style.color = '#fff';
+		warn.style.fontSize = '1.1rem';
+		warn.style.fontWeight = 'bold';
+		warn.style.textAlign = 'center';
+		warn.style.padding = '0.7em 0.5em';
+		warn.style.margin = '0 0 1em 0';
+		warn.style.borderRadius = '0 0 8px 8px';
+		warn.style.boxShadow = '0 2px 8px rgba(0,0,0,0.12)';
+		warn.style.zIndex = '10001';
+		warn.style.opacity = '0.5';
+		warn.style.display = 'block';
+		warn.style.position = 'absolute';
+		warn.style.left = '0';
+		warn.style.right = '0';
+		warn.style.width = '100vw';
+		warn.style.maxWidth = '100vw';
+		warn.style.top = 'unset';
+		// Place below nav in screen space
+		if (nav) {
+			const navRect = nav.getBoundingClientRect();
+			// Account for scroll position
+			const scrollY = window.scrollY || window.pageYOffset;
+			warn.style.top = (navRect.bottom + scrollY) + 'px';
+			warn.style.position = 'absolute';
+			document.body.appendChild(warn);
+		} else {
+			// fallback: append to body at top
+			warn.style.top = '0';
+			document.body.appendChild(warn);
+		}
+	}
+}
+
+window.addEventListener('resize', showResizeDebugA);
+
+
 function initializeTrajectoryPageBehavior() {
 	if (!document.body.classList.contains("trajectory-page")) {
 		return;
