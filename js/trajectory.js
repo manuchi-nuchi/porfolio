@@ -79,14 +79,7 @@ function initializeTrajectoryPageBehavior() {
 	const RECTANGLE_REVEAL_BAND_HEIGHT_PX = 200;
 	const RECTANGLE_REVEAL_SPEED_PX_PER_SECOND = 100;
 	const RECTANGLE_REVEAL_MAX_FPS = 24;
-	const RECTANGLE_MASK_RESOLUTION_SCALE = 1;
-	const RECTANGLE_WHITE_BAND_WIDTH_PX = 10;
-	const PERLIN_SHADER_FREQUENCY = 0.05;
-	const PERLIN_SHADER_OCTAVES = 1;
 
-	const PERLIN_BASE_FREQUENCY = 0.05;
-	const PERLIN_OCTAVES = 1;
-	const PERLIN_SEED = 7;
     
 	const RECTANGLE_FIXED_WIDTH_PX = 100;
 	const TRAJECTORY_RECTANGLES_RIGHT = [
@@ -148,119 +141,7 @@ function initializeTrajectoryPageBehavior() {
 		return Math.floor(Math.random() * 360);
 	};
 
-	const PERLIN_PERMUTATION = new Uint8Array([
-		151, 160, 137, 91, 90, 15, 131, 13, 201, 95, 96, 53, 194, 233, 7, 225,
-		140, 36, 103, 30, 69, 142, 8, 99, 37, 240, 21, 10, 23, 190, 6, 148,
-		247, 120, 234, 75, 0, 26, 197, 62, 94, 252, 219, 203, 117, 35, 11, 32,
-		57, 177, 33, 88, 237, 149, 56, 87, 174, 20, 125, 136, 171, 168, 68, 175,
-		74, 165, 71, 134, 139, 48, 27, 166, 77, 146, 158, 231, 83, 111, 229, 122,
-		60, 211, 133, 230, 220, 105, 92, 41, 55, 46, 245, 40, 244, 102, 143, 54,
-		65, 25, 63, 161, 1, 216, 80, 73, 209, 76, 132, 187, 208, 89, 18, 169,
-		200, 196, 135, 130, 116, 188, 159, 86, 164, 100, 109, 198, 173, 186, 3, 64,
-		52, 217, 226, 250, 124, 123, 5, 202, 38, 147, 118, 126, 255, 82, 85, 212,
-		207, 206, 59, 227, 47, 16, 58, 17, 182, 189, 28, 42, 223, 183, 170, 213,
-		119, 248, 152, 2, 44, 154, 163, 70, 221, 153, 101, 155, 167, 43, 172, 9,
-		129, 22, 39, 253, 19, 98, 108, 110, 79, 113, 224, 232, 178, 185, 112, 104,
-		218, 246, 97, 228, 251, 34, 242, 193, 238, 210, 144, 12, 191, 179, 162, 241,
-		81, 51, 145, 235, 249, 14, 239, 107, 49, 192, 214, 31, 181, 199, 106, 157,
-		184, 84, 204, 176, 115, 121, 50, 45, 127, 4, 150, 254, 138, 236, 205, 93,
-		222, 114, 67, 29, 24, 72, 243, 141, 128, 195, 78, 66, 215, 61, 156, 180,
-	]);
-	const PERLIN_LOOKUP = new Uint8Array(512);
-	for (let index = 0; index < 512; index += 1) {
-		PERLIN_LOOKUP[index] = PERLIN_PERMUTATION[index & 255];
-	}
 
-	const perlinFade = (value) => value * value * value * (value * (value * 6 - 15) + 10);
-	const perlinLerp = (a, b, t) => a + t * (b - a);
-	const perlinGrad = (hash, x, y) => {
-		const h = hash & 7;
-		const u = h < 4 ? x : y;
-		const v = h < 4 ? y : x;
-		return (h & 1 ? -u : u) + (h & 2 ? -v : v);
-	};
-
-	const perlin2D01 = (x, y) => {
-		const xi = Math.floor(x) & 255;
-		const yi = Math.floor(y) & 255;
-		const xf = x - Math.floor(x);
-		const yf = y - Math.floor(y);
-		const u = perlinFade(xf);
-		const v = perlinFade(yf);
-
-		const aa = PERLIN_LOOKUP[PERLIN_LOOKUP[xi] + yi];
-		const ab = PERLIN_LOOKUP[PERLIN_LOOKUP[xi] + yi + 1];
-		const ba = PERLIN_LOOKUP[PERLIN_LOOKUP[xi + 1] + yi];
-		const bb = PERLIN_LOOKUP[PERLIN_LOOKUP[xi + 1] + yi + 1];
-
-		const x1 = perlinLerp(perlinGrad(aa, xf, yf), perlinGrad(ba, xf - 1, yf), u);
-		const x2 = perlinLerp(perlinGrad(ab, xf, yf - 1), perlinGrad(bb, xf - 1, yf - 1), u);
-		const value = perlinLerp(x1, x2, v);
-		return (value + 1) * 0.5;
-	};
-
-	const sampledPerlinNoise = (x, y) => {
-		let total = 0;
-		let amplitude = 1;
-		let frequency = PERLIN_SHADER_FREQUENCY;
-		let amplitudeSum = 0;
-
-		for (let octave = 0; octave < PERLIN_SHADER_OCTAVES; octave += 1) {
-			total += perlin2D01(x * frequency, y * frequency) * amplitude;
-			amplitudeSum += amplitude;
-			amplitude *= 0.5;
-			frequency *= 2;
-		}
-
-		return amplitudeSum > 0 ? total / amplitudeSum : 0;
-	};
-
-	const ensurePerlinNoiseFilter = () => {
-		if (document.getElementById("trajectory-perlin-noise-filter")) {
-			return;
-		}
-
-		const svgNamespace = "http://www.w3.org/2000/svg";
-		const svg = document.createElementNS(svgNamespace, "svg");
-		svg.setAttribute("width", "0");
-		svg.setAttribute("height", "0");
-		svg.setAttribute("aria-hidden", "true");
-		svg.style.position = "absolute";
-		svg.style.width = "0";
-		svg.style.height = "0";
-		svg.style.overflow = "hidden";
-
-		const defs = document.createElementNS(svgNamespace, "defs");
-		const filter = document.createElementNS(svgNamespace, "filter");
-		filter.setAttribute("id", "trajectory-perlin-noise-filter");
-		filter.setAttribute("x", "-20%");
-		filter.setAttribute("y", "-20%");
-		filter.setAttribute("width", "140%");
-		filter.setAttribute("height", "140%");
-
-		const turbulence = document.createElementNS(svgNamespace, "feTurbulence");
-		turbulence.setAttribute("type", "fractalNoise");
-		turbulence.setAttribute("baseFrequency", String(PERLIN_BASE_FREQUENCY));
-		turbulence.setAttribute("numOctaves", String(PERLIN_OCTAVES));
-		turbulence.setAttribute("seed", String(PERLIN_SEED));
-		turbulence.setAttribute("result", "noise");
-
-		const colorMatrix = document.createElementNS(svgNamespace, "feColorMatrix");
-		colorMatrix.setAttribute("in", "noise");
-		colorMatrix.setAttribute("type", "saturate");
-		colorMatrix.setAttribute("values", "0");
-		colorMatrix.setAttribute("result", "monoNoise");
-
-		const blend = document.createElementNS(svgNamespace, "feBlend");
-		blend.setAttribute("in", "SourceGraphic");
-		blend.setAttribute("in2", "monoNoise");
-		blend.setAttribute("mode", "overlay");
-
-		filter.append(turbulence, colorMatrix, blend);
-		defs.append(filter);
-		svg.append(defs);
-		document.body.append(svg);
-	};
 
 	const getYearCenterY = (yearValue) => {
 		const numericYear = Number(yearValue);
@@ -421,28 +302,6 @@ function initializeTrajectoryPageBehavior() {
 		return entry.highlightMaskContext;
 	};
 
-	const ensureNoiseLookup = (entry, pixelWidth, pixelHeight, leftX, topY, width, height) => {
-		const noiseLookupKey = `${pixelWidth}x${pixelHeight}:${leftX.toFixed(2)}:${topY.toFixed(2)}:${width.toFixed(2)}:${height.toFixed(2)}`;
-		if (entry.noiseLookupKey === noiseLookupKey && entry.noiseLookup instanceof Uint8Array) {
-			return entry.noiseLookup;
-		}
-
-		const noiseLookup = new Uint8Array(pixelWidth * pixelHeight);
-		const xWorldStep = width / pixelWidth;
-		const yWorldStep = height / pixelHeight;
-		for (let y = 0; y < pixelHeight; y += 1) {
-			const worldY = topY + (y + 0.5) * yWorldStep;
-			const rowOffset = y * pixelWidth;
-			for (let x = 0; x < pixelWidth; x += 1) {
-				const worldX = leftX + (x + 0.5) * xWorldStep;
-				noiseLookup[rowOffset + x] = Math.round(sampledPerlinNoise(worldX, worldY) * 255);
-			}
-		}
-
-		entry.noiseLookup = noiseLookup;
-		entry.noiseLookupKey = noiseLookupKey;
-		return noiseLookup;
-	};
 
 	const prewarmRectangleNoiseLookups = () => {
 		noisePrewarmToken += 1;
@@ -452,8 +311,8 @@ function initializeTrajectoryPageBehavior() {
 				return false;
 			}
 
-			const pixelWidth = Math.max(1, Math.round(entry.width * RECTANGLE_MASK_RESOLUTION_SCALE));
-			const pixelHeight = Math.max(1, Math.round(entry.height * RECTANGLE_MASK_RESOLUTION_SCALE));
+			const pixelWidth = Math.max(1, Math.round(entry.width));
+			const pixelHeight = Math.max(1, Math.round(entry.height));
 			const expectedKey = `${pixelWidth}x${pixelHeight}:${entry.leftX.toFixed(2)}:${entry.topY.toFixed(2)}:${entry.width.toFixed(2)}:${entry.height.toFixed(2)}`;
 			return entry.noiseLookupKey !== expectedKey || !(entry.noiseLookup instanceof Uint8Array);
 		});
@@ -470,9 +329,8 @@ function initializeTrajectoryPageBehavior() {
 			const chunkEnd = Math.min(startIndex + 2, pendingEntries.length);
 			for (let index = startIndex; index < chunkEnd; index += 1) {
 				const entry = pendingEntries[index];
-				const pixelWidth = Math.max(1, Math.round(entry.width * RECTANGLE_MASK_RESOLUTION_SCALE));
-				const pixelHeight = Math.max(1, Math.round(entry.height * RECTANGLE_MASK_RESOLUTION_SCALE));
-				ensureNoiseLookup(entry, pixelWidth, pixelHeight, entry.leftX, entry.topY, entry.width, entry.height);
+				const pixelWidth = Math.max(1, Math.round(entry.width));
+				const pixelHeight = Math.max(1, Math.round(entry.height));
 			}
 
 			if (chunkEnd >= pendingEntries.length) {
@@ -583,8 +441,8 @@ function initializeTrajectoryPageBehavior() {
 
 			rectangle.style.opacity = "0.9";
 			highlightOverlay.style.opacity = "0.95";
-			const pixelWidth = Math.max(1, Math.round(width * RECTANGLE_MASK_RESOLUTION_SCALE));
-			const pixelHeight = Math.max(1, Math.round(height * RECTANGLE_MASK_RESOLUTION_SCALE));
+			const pixelWidth = Math.max(1, Math.round(width));
+			const pixelHeight = Math.max(1, Math.round(height));
 			const xWorldStep = width / pixelWidth;
 			const yWorldStep = height / pixelHeight;
 			const context2d = ensureMaskCanvas(entry, pixelWidth, pixelHeight);
@@ -592,48 +450,17 @@ function initializeTrajectoryPageBehavior() {
 			if (!context2d || !highlightContext2d) {
 				return;
 			}
-			const noiseLookup = ensureNoiseLookup(entry, pixelWidth, pixelHeight, leftX, topY, width, height);
 
 			const imageData = ensureMaskImageData(entry, context2d, pixelWidth, pixelHeight);
 			const data = imageData.data;
 			const highlightImageData = ensureHighlightMaskImageData(entry, highlightContext2d, pixelWidth, pixelHeight);
 			const highlightData = highlightImageData.data;
 			const { opaqueRow, transparentRow } = getRowTemplates(pixelWidth);
+			
 			for (let y = 0; y < pixelHeight; y += 1) {
-				const worldY = topY + (y + 0.5) * yWorldStep;
 				const rowOffset = y * pixelWidth * 4;
-
-				if (worldY > A) {
-					data.set(transparentRow, rowOffset);
-					highlightData.set(transparentRow, rowOffset);
-					continue;
-				}
-
-				if (worldY < B) {
-					data.set(opaqueRow, rowOffset);
-					highlightData.set(transparentRow, rowOffset);
-					continue;
-				}
-
-				const V = Math.max(0, Math.min(1, (A - worldY) / RECTANGLE_REVEAL_BAND_HEIGHT_PX));
-				for (let x = 0; x < pixelWidth; x += 1) {
-					const scaledPerlin = noiseLookup[y * pixelWidth + x];
-					const scaledV = V * 255;
-					const scaledUpperBand = scaledV + RECTANGLE_WHITE_BAND_WIDTH_PX;
-					const isBelowThreshold = scaledPerlin < scaledV;
-					const isWhiteBand = scaledPerlin > scaledV && scaledPerlin < scaledUpperBand;
-					const alpha = isBelowThreshold || isWhiteBand ? 255 : 0;
-					const highlightAlpha = isWhiteBand ? 255 : 0;
-					const idx = rowOffset + x * 4;
-					data[idx] = 255;
-					data[idx + 1] = 255;
-					data[idx + 2] = 255;
-					data[idx + 3] = alpha;
-					highlightData[idx] = 255;
-					highlightData[idx + 1] = 255;
-					highlightData[idx + 2] = 255;
-					highlightData[idx + 3] = highlightAlpha;
-				}
+				data.set(opaqueRow, rowOffset);
+				highlightData.set(transparentRow, rowOffset);
 			}
 
 			context2d.putImageData(imageData, 0, 0);
@@ -760,20 +587,24 @@ function initializeTrajectoryPageBehavior() {
 
 		const maxYearY = updateYearTickPositions();
 		const maxRectangleY = updateYearRectangles();
-		prewarmRectangleNoiseLookups();
+		// prewarmRectangleNoiseLookups();
 		updatePageMinHeight(Math.max(maxYearY, maxRectangleY));
 		updateYearLabelOpacity();
 	};
 
 	window.updateTrajectoryLinePosition = updateLinePosition;
+
 	window.trajectoryRectangleDefinitionsRight = TRAJECTORY_RECTANGLES_RIGHT;
 	window.trajectoryRectangleDefinitionsLeft = TRAJECTORY_RECTANGLES_LEFT;
-	ensurePerlinNoiseFilter();
 
 	ensureYearTicks();
 	ensureYearRectangles();
 	updateLinePosition();
-	ensureRectangleRevealLoop();
+
+	// Delay rectangle reveal loop by 5 seconds after page load
+	setTimeout(() => {
+		ensureRectangleRevealLoop();
+	}, 5000);
 
 	window.requestAnimationFrame(updateLinePosition);
 	window.setTimeout(updateLinePosition, 200);
