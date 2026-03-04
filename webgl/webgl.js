@@ -1,7 +1,6 @@
 // webgl.js - minimal WebGL2 logic for a red square in the center
 
-
-export async function fetchShaderSource(url) {
+async function fetchShaderSource(url) {
     try {
         const response = await fetch(url);
         if (!response.ok) throw new Error('Failed to fetch ' + url);
@@ -12,7 +11,7 @@ export async function fetchShaderSource(url) {
     }
 }
 
-export async function initWebGLRedSquare(canvasId, vertUrl, fragUrl, perlinUrl = '../webgl/perlin_noise_100x500.png') {
+async function initWebGLRedSquare(canvasId, vertUrl, fragUrl, perlinUrl = '../webgl/perlin_noise_100x500.png') {
     // Animation timing constants (from trajectory.js)
     const RECTANGLE_REVEAL_START_DELAY_MS = 0;
     const RECTANGLE_REVEAL_SPEED_PX_PER_SECOND = 100;
@@ -97,22 +96,43 @@ export async function initWebGLRedSquare(canvasId, vertUrl, fragUrl, perlinUrl =
     gl.uniform1i(uPerlin, 0);
 
     // Two square structs: red (right), blue (left)
-    const squares = [
-        {
-            width: 100,
-            height: 100,
-            color: [1.0, 0.0, 0.0], // red
-            positionX: 100, // right
-            positionY: 0
-        },
-        {
-            width: 100,
-            height: 100,
-            color: [0.0, 0.0, 1.0], // blue
-            positionX: -300, // left
-            positionY: 0
+    // Build one square for each trajectory rectangle, each with a random color
+        // Helper to generate a random RGB color (full saturation)
+        function randomColor() {
+            // Generate a random hue and convert to RGB
+            const h = Math.random();
+            const s = 1.0;
+            const v = 1.0;
+            const i = Math.floor(h * 6);
+            const f = h * 6 - i;
+            const p = v * (1 - s);
+            const q = v * (1 - f * s);
+            const t = v * (1 - (1 - f) * s);
+            let r, g, b;
+            switch (i % 6) {
+                case 0: r = v, g = t, b = p; break;
+                case 1: r = q, g = v, b = p; break;
+                case 2: r = p, g = v, b = t; break;
+                case 3: r = p, g = q, b = v; break;
+                case 4: r = t, g = p, b = v; break;
+                case 5: r = v, g = p, b = q; break;
+            }
+            return [r, g, b];
         }
-    ];
+    if (!window.TRAJECTORY_RECTANGLE_DEFINITIONS) {
+        console.warn('webgl.js: window.TRAJECTORY_RECTANGLE_DEFINITIONS is not defined at WebGL init');
+    } else {
+        console.log('webgl.js: window.TRAJECTORY_RECTANGLE_DEFINITIONS', window.TRAJECTORY_RECTANGLE_DEFINITIONS);
+    }
+    const squares = (window.TRAJECTORY_RECTANGLE_DEFINITIONS || []).map(rect => ({
+        width: 100,
+        height: 100,
+        color: randomColor(),
+        positionX: rect.side === 'left' ? -rect.xOffsetPx : rect.xOffsetPx,
+        endYear: rect.endYear,
+        // positionY will be set dynamically in updateSquareVertices
+    }));
+    console.log('webgl.js: squares', squares);
 
     // Square vertices (centered, NDC)
     // Full-screen quad (NDC from -1 to +1)
@@ -217,7 +237,9 @@ export async function initWebGLRedSquare(canvasId, vertUrl, fragUrl, perlinUrl =
 
     // Add u_color uniform
     const uColor = gl.getUniformLocation(program, 'u_color');
-    gl.uniform3fv(uColor, squares[0].color);
+    if (squares && squares.length > 0 && squares[0].color) {
+        gl.uniform3fv(uColor, squares[0].color);
+    }
 
     gl.viewport(0, 0, canvas.width, canvas.height);
     gl.clearColor(0, 0, 0, 0);
@@ -244,10 +266,10 @@ export async function initWebGLRedSquare(canvasId, vertUrl, fragUrl, perlinUrl =
     }
     function redrawSquare() {
         gl.clear(gl.COLOR_BUFFER_BIT);
-        // Red square at 2024, blue at 2021
-        const years = [2024, 2021];
         for (let i = 0; i < squares.length; ++i) {
-            const squareVertices = updateSquareVertices(squares[i], years[i]);
+            // Use the endYear property from the square for correct Y position
+            const year = squares[i].endYear || 2024;
+            const squareVertices = updateSquareVertices(squares[i], year);
             gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
             gl.bufferData(gl.ARRAY_BUFFER, squareVertices, gl.DYNAMIC_DRAW);
             gl.uniform3fv(uColor, squares[i].color);
@@ -290,3 +312,6 @@ function getYearCenterY(year) {
 }
 
 // To use: call initWebGLRedSquare('webgl-canvas', 'webgl/shader.vert', 'webgl/shader.frag') after DOM is ready.
+
+// Attach to window for global access
+window.initWebGLRedSquare = initWebGLRedSquare;

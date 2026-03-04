@@ -47,6 +47,10 @@ function initializeTrajectoryPageBehavior() {
 		...TRAJECTORY_RECTANGLES_LEFT.map((definition) => ({ ...definition, side: "left" })),
 	];
 
+	window.TRAJECTORY_RECTANGLE_DEFINITIONS = TRAJECTORY_RECTANGLE_DEFINITIONS;
+	window.YEAR_SPACING_PX = YEAR_SPACING_PX;
+	window.YEAR_START_OFFSET_PX = YEAR_START_OFFSET_PX;
+	
 	const yearTickElements = [];
 	const yearRectangleElements = [];
 

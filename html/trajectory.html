@@ -5,7 +5,7 @@
 	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 	<title>trajectory</title>
 	<script src="../js/site.js?v=11"></script>
-	<script src="../js/trajectory.js?v=1" defer></script>
+	<script src="../js/trajectory.js?v=1"></script>
 	<link rel="stylesheet" href="../css/styles.css?v=12" />
 	<link rel="stylesheet" href="../css/trajectory.css?v=1" />
 </head>
@@ -20,11 +20,16 @@
 		<a href="contact.html">contact</a>
 		<a class="secret-tab" href="secret.html">?</a>
 	</nav>
-	<script type="module">
-	import { initWebGLRedSquare } from '../webgl/webgl.js';
-	window.addEventListener('DOMContentLoaded', () => {
-		initWebGLRedSquare('webgl-canvas', '../webgl/shader.vert', '../webgl/shader.frag', '../webgl/perlin_noise_100x500.png');
-	});
-	</script>
+	   <script src="../webgl/webgl.js"></script>
+	   <script>
+	   function startWebGLWhenReady() {
+		   if (window.initWebGLRedSquare && window.TRAJECTORY_RECTANGLE_DEFINITIONS) {
+			   window.initWebGLRedSquare('webgl-canvas', '../webgl/shader.vert', '../webgl/shader.frag', '../webgl/perlin_noise_100x500.png');
+		   } else {
+			   setTimeout(startWebGLWhenReady, 30);
+		   }
+	   }
+	   window.addEventListener('DOMContentLoaded', startWebGLWhenReady);
+	   </script>
 </body>
 </html>
