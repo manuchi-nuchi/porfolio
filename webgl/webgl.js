@@ -128,7 +128,7 @@ async function initWebGLRedSquare(canvasId, vertUrl, fragUrl, perlinUrl = '../we
         width: 100,
         height: 100,
         color: randomColor(),
-        positionX: rect.side === 'left' ? -rect.xOffsetPx : rect.xOffsetPx,
+        xOffsetPx: rect.side === 'left' ? -Math.abs(rect.xOffsetPx) : Math.abs(rect.xOffsetPx),
         endYear: rect.endYear,
         // positionY will be set dynamically in updateSquareVertices
     }));
@@ -169,12 +169,27 @@ async function initWebGLRedSquare(canvasId, vertUrl, fragUrl, perlinUrl = '../we
         resizeCanvasToDisplaySize();
         canvasWidth = canvas.width;
         canvasHeight = canvas.height;
-        const ndcW = square.width / canvasWidth;
-        const ndcH = square.height / canvasHeight;
-        const positionXNDC = square.positionX / canvasWidth;
-        // Set square.positionY to required height (year center minus half height)
-        square.positionY = getYearCenterY(year) - square.height / 2;
+            const ndcW = square.width / canvasWidth;
+            const ndcH = square.height / canvasHeight;
+        // Compute the canvas center in page coordinates
         const canvasRect = canvas.getBoundingClientRect();
+        const canvasCenterPageX = canvasRect.left + window.scrollX + canvas.width / 2;
+        // Get the DOM center (linePageX) from the global window object
+        let linePageX = window.linePageX;
+        if (typeof linePageX !== 'number') {
+            // Try to get it from trajectory.js if available
+            linePageX = window.innerWidth / 2;
+        }
+        // Debug log for alignment
+        if (window.DEBUG_WEBGL_ALIGNMENT) {
+            console.log('updateSquareVertices:', {canvasCenterPageX, linePageX, xOffsetPx: square.xOffsetPx});
+        }
+        // Offset from canvas center by the same amount as DOM rectangles
+        // (canvas center) + (xOffsetPx) + (linePageX - canvasCenterPageX)
+        const centerX = canvas.width / 2 + square.xOffsetPx + (linePageX - canvasCenterPageX);
+        const positionXNDC = (2 * centerX / canvasWidth) - 1;
+        // Y logic unchanged
+            square.positionY = getYearCenterY(year) - square.height / 2 + 50; // Shifted 50px lower
         const canvasTopY = canvasRect.top + window.scrollY;
         const localY = square.positionY - canvasTopY + square.height / 2; // center of square
         const ndcY = 1 - 2 * (localY / canvasHeight);

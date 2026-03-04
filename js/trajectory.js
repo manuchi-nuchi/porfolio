@@ -683,6 +683,7 @@ function initializeTrajectoryPageBehavior() {
 		const lineViewportX = isNarrowScreen ? window.innerWidth / 2 : tabRect.left + tabRect.width / 2;
 		const centerXWithinNav = tabRect.left + tabRect.width / 2 - navRect.left;
 		linePageX = lineViewportX + window.scrollX;
+		window.linePageX = linePageX;
 
 		siteNav.style.setProperty("--trajectory-line-x", `${centerXWithinNav}px`);
 		siteNav.style.setProperty("--trajectory-line-top-offset", `${navRect.top}px`);
