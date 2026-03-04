@@ -248,6 +248,8 @@ async function initWebGLRedSquare(canvasId, vertUrl, fragUrl, perlinUrl = '../we
     // Pass square size as uniform (for future use if needed)
     const uSquareSize = gl.getUniformLocation(program, 'u_squareSize');
     if (uSquareSize) gl.uniform2f(uSquareSize, squareWidth, squareHeight);
+    // Add per-square height uniform
+    const uSquareHeight = gl.getUniformLocation(program, 'uSquareHeight');
 
     // Pass outline width as uniform
     const uOutlineWidth = gl.getUniformLocation(program, 'u_outlineWidth');
@@ -268,17 +270,29 @@ async function initWebGLRedSquare(canvasId, vertUrl, fragUrl, perlinUrl = '../we
     // Animation loop for fade-in
     const uA = gl.getUniformLocation(program, 'u_A');
     const uB = gl.getUniformLocation(program, 'u_B');
+    // Track per-square animation state
+    const squareAnimStates = squares.map(() => ({ startTimestamp: null, done: false }));
     function animateFadeIn(timestamp) {
-        if (!revealStartTimestamp) revealStartTimestamp = timestamp;
-        const elapsed = Math.max(0, timestamp - revealStartTimestamp - RECTANGLE_REVEAL_START_DELAY_MS) / 1000;
-        // A = speed * elapsed, B = A - band_height
-        const A = RECTANGLE_REVEAL_SPEED_PX_PER_SECOND * elapsed;
-        const B = A - RECTANGLE_REVEAL_BAND_HEIGHT_PX;
-        gl.useProgram(program);
-        gl.uniform1f(uA, A);
-        gl.uniform1f(uB, B);
+        let allDone = true;
+        for (let i = 0; i < squares.length; ++i) {
+            if (squareAnimStates[i].done) continue;
+            if (!squareAnimStates[i].startTimestamp) squareAnimStates[i].startTimestamp = timestamp;
+            const elapsed = Math.max(0, timestamp - squareAnimStates[i].startTimestamp - RECTANGLE_REVEAL_START_DELAY_MS) / 1000;
+            const A = RECTANGLE_REVEAL_SPEED_PX_PER_SECOND * elapsed;
+            const B = A - RECTANGLE_REVEAL_BAND_HEIGHT_PX;
+            squares[i].A = A;
+            squares[i].B = B;
+            if (i === 1) {
+                console.log(`A: ${A}, B: ${B}`);
+            }
+            if (B < squares[i].height) {
+                allDone = false;
+            } else {
+                squareAnimStates[i].done = true;
+            }
+        }
         redrawSquare();
-        if (B < 100) {
+        if (!allDone) {
             requestAnimationFrame(animateFadeIn);
         }
     }
@@ -291,6 +305,10 @@ async function initWebGLRedSquare(canvasId, vertUrl, fragUrl, perlinUrl = '../we
             gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
             gl.bufferData(gl.ARRAY_BUFFER, squareVertices, gl.DYNAMIC_DRAW);
             gl.uniform3fv(uColor, squares[i].color);
+            // Set per-square A, B, and height uniforms
+            gl.uniform1f(uA, squares[i].A !== undefined ? squares[i].A : 0);
+            gl.uniform1f(uB, squares[i].B !== undefined ? squares[i].B : -RECTANGLE_REVEAL_BAND_HEIGHT_PX);
+            if (uSquareHeight) gl.uniform1f(uSquareHeight, squares[i].height);
             gl.drawArrays(gl.TRIANGLES, 0, 6);
         }
     }

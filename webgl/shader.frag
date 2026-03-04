@@ -9,13 +9,14 @@ uniform float u_A;
 uniform float u_B;
 uniform float u_outlineWidth;
 uniform vec3 u_color;
+uniform float uSquareHeight;
 
 void main() {
     vec2 texel = (floor(v_pixel) + 0.5) / u_texSize;
     float n = texture2D(u_perlin, texel).r;
     vec3 color = u_color;
-    float uvA = u_A / 100.0;
-    float uvB = u_B / 100.0;
+    float uvA = u_A / uSquareHeight;
+    float uvB = u_B / uSquareHeight;
     float V = clamp(((1.0 - v_uv.y) - uvA) / (uvB - uvA), 0.0, 1.0);
     if ((1.0 - v_uv.y) < uvB) // fully revealed
     {
