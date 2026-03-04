@@ -119,11 +119,11 @@ async function initWebGLRedSquare(canvasId, vertUrl, fragUrl, perlinUrl = '../we
             }
             return [r, g, b];
         }
-    if (!window.TRAJECTORY_RECTANGLE_DEFINITIONS) {
-        console.warn('webgl.js: window.TRAJECTORY_RECTANGLE_DEFINITIONS is not defined at WebGL init');
-    } else {
-        console.log('webgl.js: window.TRAJECTORY_RECTANGLE_DEFINITIONS', window.TRAJECTORY_RECTANGLE_DEFINITIONS);
-    }
+    // if (!window.TRAJECTORY_RECTANGLE_DEFINITIONS) {
+    //     console.warn('webgl.js: window.TRAJECTORY_RECTANGLE_DEFINITIONS is not defined at WebGL init');
+    // } else {
+    //     console.log('webgl.js: window.TRAJECTORY_RECTANGLE_DEFINITIONS', window.TRAJECTORY_RECTANGLE_DEFINITIONS);
+    // }
         const squares = (window.TRAJECTORY_RECTANGLE_DEFINITIONS || []).map(rect => ({
             color: randomColor(),
             width: 100,
@@ -133,7 +133,6 @@ async function initWebGLRedSquare(canvasId, vertUrl, fragUrl, perlinUrl = '../we
             startYear: rect.startYear,
             side: rect.side
         }));
-    console.log('webgl.js: squares', squares);
 
     // Square vertices (centered, NDC)
     // Full-screen quad (NDC from -1 to +1)
@@ -282,9 +281,7 @@ async function initWebGLRedSquare(canvasId, vertUrl, fragUrl, perlinUrl = '../we
             const B = A - RECTANGLE_REVEAL_BAND_HEIGHT_PX;
             squares[i].A = A;
             squares[i].B = B;
-            if (i === 1) {
-                console.log(`A: ${A}, B: ${B}`);
-            }
+            
             if (B < squares[i].height) {
                 allDone = false;
             } else {
@@ -305,10 +302,11 @@ async function initWebGLRedSquare(canvasId, vertUrl, fragUrl, perlinUrl = '../we
             gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
             gl.bufferData(gl.ARRAY_BUFFER, squareVertices, gl.DYNAMIC_DRAW);
             gl.uniform3fv(uColor, squares[i].color);
-            // Set per-square A, B, and height uniforms
+            // Set per-square A, B, height, and size uniforms
             gl.uniform1f(uA, squares[i].A !== undefined ? squares[i].A : 0);
             gl.uniform1f(uB, squares[i].B !== undefined ? squares[i].B : -RECTANGLE_REVEAL_BAND_HEIGHT_PX);
             if (uSquareHeight) gl.uniform1f(uSquareHeight, squares[i].height);
+            if (uSquareSize) gl.uniform2f(uSquareSize, squares[i].width, squares[i].height);
             gl.drawArrays(gl.TRIANGLES, 0, 6);
         }
     }

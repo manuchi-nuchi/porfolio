@@ -1,9 +1,10 @@
-// Vertex shader
+
 attribute vec2 a_position;
 attribute vec2 a_uv;
 varying vec2 v_uv;
 varying vec2 v_pixel;
 uniform highp vec2 u_squareSize;
+
 void main() {
     v_uv = a_uv;
     // v_pixel is always in [0, squareSize] for the square, regardless of position
