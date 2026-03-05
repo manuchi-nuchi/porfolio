@@ -15,8 +15,8 @@ async function initWebGLRedSquare(canvasId, vertUrl, fragUrl, perlinUrl = '../we
     // Animation timing constants (from trajectory.js)
     const RECTANGLE_REVEAL_START_DELAY_MS = 0;
     const REVEAL_BASE_YEAR = 2026;
-    const REVEAL_DELAY_PER_YEAR_MS = 300;
-    const RECTANGLE_REVEAL_SPEED_PX_PER_SECOND = 200;
+    const REVEAL_DELAY_PER_YEAR_MS = 400;
+    const RECTANGLE_REVEAL_SPEED_PX_PER_SECOND = 150;
     const RECTANGLE_REVEAL_BAND_HEIGHT_PX = 200;
     const RECTANGLE_OULINE_WIDTH_PX = 10;
     // For a 100px square, fade in over the same band height
