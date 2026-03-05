@@ -1,4 +1,5 @@
 
+
 function showResizeDebugA() {
 	if (!document.body.classList.contains('trajectory-page')) return;
 	// Hide warning if narrow screen
