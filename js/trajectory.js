@@ -75,7 +75,7 @@ function initializeTrajectoryPageBehavior() {
 	const YEAR_REVEAL_START_DELAY_MS = 500;
 	const YEAR_REVEAL_STAGGER_MS = 60;
 
-	const RECTANGLE_REVEAL_START_DELAY_MS = 0;
+	const RECTANGLE_REVEAL_START_DELAY_MS = 2000;
 	const RECTANGLE_REVEAL_BAND_HEIGHT_PX = 200;
 	const RECTANGLE_REVEAL_SPEED_PX_PER_SECOND = 100;
 	const RECTANGLE_REVEAL_MAX_FPS = 24;
@@ -341,13 +341,15 @@ function initializeTrajectoryPageBehavior() {
 
 	window.SetRectanglesTimeouts = function()
 	{
+		console.log(window.REVEAL_DELAY_PER_YEAR_MS + " " + window.RECTANGLE_REVEAL_SPEED_PX_PER_SECOND + " " + window.RECTANGLE_REVEAL_START_DELAY_MS + " " + window.RECTANGLE_REVEAL_BAND_HEIGHT_PX);
 		yearRectangleElements.forEach((entry) => {
 			
 			const delay =
-				(YEAR_TOP - entry.definition.startYear) * window.REVEAL_DELAY_PER_YEAR_MS
+				(YEAR_TOP - entry.definition.endYear) * window.REVEAL_DELAY_PER_YEAR_MS
 				+
-				(entry.definition.startYear - entry.definition.endYear) * window.RECTANGLE_REVEAL_SPEED_PX_PER_SECOND;
-			console.log(`Scheduling reveal for ${entry.definition.title} with delay ${delay}ms`);
+				((entry.definition.endYear - entry.definition.startYear) * YEAR_SPACING_PX + window.RECTANGLE_REVEAL_BAND_HEIGHT_PX) / window.RECTANGLE_REVEAL_SPEED_PX_PER_SECOND * 1000
+				+
+				window.RECTANGLE_REVEAL_START_DELAY_MS;
 	
 			setTimeout(() => {
 				entry.rectangle.style.opacity = "1";
