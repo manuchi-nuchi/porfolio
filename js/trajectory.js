@@ -338,13 +338,23 @@ function initializeTrajectoryPageBehavior() {
 	updateLinePosition();
 
 
-	// Show all rectangles after 2 seconds
-	setTimeout(() => {
+
+	window.SetRectanglesTimeouts = function()
+	{
 		yearRectangleElements.forEach((entry) => {
-			entry.rectangle.style.opacity = "0.9";
-			entry.highlightOverlay.style.opacity = "0.95";
+			
+			const delay =
+				(YEAR_TOP - entry.definition.startYear) * window.REVEAL_DELAY_PER_YEAR_MS
+				+
+				(entry.definition.startYear - entry.definition.endYear) * window.RECTANGLE_REVEAL_SPEED_PX_PER_SECOND;
+			console.log(`Scheduling reveal for ${entry.definition.title} with delay ${delay}ms`);
+	
+			setTimeout(() => {
+				entry.rectangle.style.opacity = "1";
+				entry.highlightOverlay.style.opacity = "1";
+			}, delay);
 		});
-	}, 2000);
+	};
 
 	window.requestAnimationFrame(updateLinePosition);
 	window.setTimeout(updateLinePosition, 200);

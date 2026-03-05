@@ -23,6 +23,7 @@ async function initWebGLRedSquare(canvasId, vertUrl, fragUrl, perlinUrl = '../we
     window.REVEAL_BASE_YEAR = REVEAL_BASE_YEAR;
     window.REVEAL_DELAY_PER_YEAR_MS = REVEAL_DELAY_PER_YEAR_MS;
     window.RECTANGLE_REVEAL_SPEED_PX_PER_SECOND = RECTANGLE_REVEAL_SPEED_PX_PER_SECOND;
+    window.SetRectanglesTimeouts();
 
     // For a 100px square, fade in over the same band height
     let revealStartTimestamp = null;
