@@ -290,9 +290,23 @@ async function initWebGLRedSquare(canvasId, vertUrl, fragUrl, perlinUrl = '../we
         revealDelay: (typeof sq.endYear === 'number' ? (REVEAL_BASE_YEAR - sq.endYear) : 0) * REVEAL_DELAY_PER_YEAR_MS
     }));
     function animateFadeIn(timestamp) {
-        let allDone = true;
-        for (let i = 0; i < squares.length; ++i) {
-            if (squareAnimStates[i].done) continue;
+        let i = 0;
+        while (i < squares.length) {
+            if (squareAnimStates[i].done && !squareAnimStates[i].removeScheduled) {
+                // Schedule removal after 0.5s
+                squareAnimStates[i].removeScheduled = true;
+                const squareToRemove = squares[i];
+                setTimeout(() => {
+                    const idx = squares.indexOf(squareToRemove);
+                    if (idx !== -1) {
+                        squares.splice(idx, 1);
+                        squareAnimStates.splice(idx, 1);
+                        redrawSquare();
+                    }
+                }, 500);
+                i++;
+                continue;
+            }
             if (!squareAnimStates[i].startTimestamp) squareAnimStates[i].startTimestamp = timestamp;
             // Add per-square reveal delay
             const delay = squareAnimStates[i].revealDelay || 0;
@@ -302,13 +316,15 @@ async function initWebGLRedSquare(canvasId, vertUrl, fragUrl, perlinUrl = '../we
             squares[i].A = A;
             squares[i].B = B;
             if (B < squares[i].height) {
-                allDone = false;
+                i++;
             } else {
                 squareAnimStates[i].done = true;
+                // Removal will be scheduled next loop
+                i++;
             }
         }
         redrawSquare();
-        if (!allDone) {
+        if (squares.length > 0) {
             requestAnimationFrame(animateFadeIn);
         }
     }

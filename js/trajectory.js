@@ -17,7 +17,7 @@ function showResizeDebugA() {
 	if (nav) {
 		const warn = document.createElement('div');
 		warn.id = 'resize-broken-warning';
-		warn.textContent = '[ resizing broke the game. maybe change tabs again? ]';
+		warn.textContent = '[ resizing breaks the game srry xd maybe change tabs again? ]';
 		warn.style.background = '#ff0033';
 		warn.style.color = '#fff';
 		warn.style.fontSize = '1.1rem';
