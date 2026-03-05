@@ -145,6 +145,11 @@ body.trajectory-page .trajectory-year-rectangle::before {
 	border-radius: inherit;
 	background: var(--trajectory-rectangle-fill, hsl(var(--trajectory-rectangle-base-hue, 0) 100% 55%));
 	animation: trajectory-rectangle-hue-loop 20s linear infinite;
+	animation-play-state: paused;
+	}
+
+	body.trajectory-page .trajectory-year-rectangle.hue-anim-running::before {
+		animation-play-state: running;
 	z-index: 0;
 }
 
@@ -166,7 +171,13 @@ body.trajectory-page .trajectory-year-rectangle-highlight {
 	background: #ffffff;
 	opacity: 1;
 	z-index: 2;
+	animation: trajectory-rectangle-hue-loop 20s linear infinite;
+	animation-play-state: paused;
 }
+
+	body.trajectory-page .trajectory-year-rectangle-highlight.hue-anim-running {
+		animation-play-state: running;
+	}
 
 body.trajectory-page .trajectory-year-rectangle:hover::before {
 	animation-play-state: paused;

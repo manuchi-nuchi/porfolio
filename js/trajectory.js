@@ -354,6 +354,10 @@ function initializeTrajectoryPageBehavior() {
 			setTimeout(() => {
 				entry.rectangle.style.opacity = "1";
 				entry.highlightOverlay.style.opacity = "1";
+				// Start hue animation by adding class
+				entry.highlightOverlay.classList.add('hue-anim-running');
+				// Force reflow to ensure animation starts
+				void entry.rectangle.offsetWidth;
 			}, delay);
 		});
 	};
