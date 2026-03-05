@@ -19,6 +19,11 @@ async function initWebGLRedSquare(canvasId, vertUrl, fragUrl, perlinUrl = '../we
     const RECTANGLE_REVEAL_SPEED_PX_PER_SECOND = 150;
     const RECTANGLE_REVEAL_BAND_HEIGHT_PX = 200;
     const RECTANGLE_OULINE_WIDTH_PX = 10;
+
+    window.REVEAL_BASE_YEAR = REVEAL_BASE_YEAR;
+    window.REVEAL_DELAY_PER_YEAR_MS = REVEAL_DELAY_PER_YEAR_MS;
+    window.RECTANGLE_REVEAL_SPEED_PX_PER_SECOND = RECTANGLE_REVEAL_SPEED_PX_PER_SECOND;
+
     // For a 100px square, fade in over the same band height
     let revealStartTimestamp = null;
     let globalAlpha = 0;
@@ -100,9 +105,10 @@ async function initWebGLRedSquare(canvasId, vertUrl, fragUrl, perlinUrl = '../we
     // Two square structs: red (right), blue (left)
     // Build one square for each trajectory rectangle, each with a random color
         // Helper to generate a random RGB color (full saturation)
-        function randomColor() {
+        function randomColor(rect) {
             // Generate a random hue and convert to RGB
             const h = Math.random();
+
             const s = 1.0;
             const v = 1.0;
             const i = Math.floor(h * 6);
@@ -119,6 +125,9 @@ async function initWebGLRedSquare(canvasId, vertUrl, fragUrl, perlinUrl = '../we
                 case 4: r = t, g = p, b = v; break;
                 case 5: r = v, g = p, b = q; break;
             }
+            
+            rect.style.background = `rgb(${Math.round(r*255)}, ${Math.round(g*255)}, ${Math.round(b*255)})`;
+            
             return [r, g, b];
         }
     // if (!window.TRAJECTORY_RECTANGLE_DEFINITIONS) {
@@ -127,7 +136,7 @@ async function initWebGLRedSquare(canvasId, vertUrl, fragUrl, perlinUrl = '../we
     //     console.log('webgl.js: window.TRAJECTORY_RECTANGLE_DEFINITIONS', window.TRAJECTORY_RECTANGLE_DEFINITIONS);
     // }
         const squares = (window.TRAJECTORY_RECTANGLE_DEFINITIONS || []).map(rect => ({
-            color: randomColor(),
+            color: randomColor(rect.rect),
             width: 100,
             height: 100 * (rect.endYear - rect.startYear),
             xOffsetPx: rect.side === 'left' ? -Math.abs(rect.xOffsetPx) : Math.abs(rect.xOffsetPx),

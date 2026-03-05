@@ -210,6 +210,8 @@ function initializeTrajectoryPageBehavior() {
 			rectangle.append(rectangleText);
 			rectanglesLayer.append(rectangle);
 
+			definition.rect = highlightOverlay;
+
 			yearRectangleElements.push({
 				rectangle,
 				highlightOverlay,
@@ -220,270 +222,10 @@ function initializeTrajectoryPageBehavior() {
 				topY: 0,
 				width: 0,
 				height: 0,
-				maskCanvas: null,
-				maskContext: null,
-				maskImageData: null,
-				highlightMaskCanvas: null,
-				highlightMaskContext: null,
-				highlightMaskImageData: null,
-				noiseLookup: null,
-				noiseLookupKey: "",
 			});
 		});
 	};
 
-	const applyMaskImage = (rectangle, maskUrl) => {
-		rectangle.style.webkitMaskImage = `url("${maskUrl}")`;
-		rectangle.style.maskImage = `url("${maskUrl}")`;
-		rectangle.style.webkitMaskRepeat = "no-repeat";
-		rectangle.style.maskRepeat = "no-repeat";
-		rectangle.style.webkitMaskSize = "100% 100%";
-		rectangle.style.maskSize = "100% 100%";
-	};
-
-	const clearMaskImage = (rectangle) => {
-		rectangle.style.webkitMaskImage = "";
-		rectangle.style.maskImage = "";
-		rectangle.style.webkitMaskRepeat = "";
-		rectangle.style.maskRepeat = "";
-		rectangle.style.webkitMaskSize = "";
-		rectangle.style.maskSize = "";
-	};
-
-	const clearEntryMaskResources = (entry) => {
-		void entry;
-	};
-
-	const applyHighlightMaskImage = (highlightElement, maskUrl) => {
-		highlightElement.style.webkitMaskImage = `url("${maskUrl}")`;
-		highlightElement.style.maskImage = `url("${maskUrl}")`;
-		highlightElement.style.webkitMaskRepeat = "no-repeat";
-		highlightElement.style.maskRepeat = "no-repeat";
-		highlightElement.style.webkitMaskSize = "100% 100%";
-		highlightElement.style.maskSize = "100% 100%";
-	};
-
-	const clearHighlightMaskImage = (highlightElement) => {
-		highlightElement.style.webkitMaskImage = "";
-		highlightElement.style.maskImage = "";
-		highlightElement.style.webkitMaskRepeat = "";
-		highlightElement.style.maskRepeat = "";
-		highlightElement.style.webkitMaskSize = "";
-		highlightElement.style.maskSize = "";
-	};
-
-	const ensureMaskCanvas = (entry, width, height) => {
-		if (!(entry.maskCanvas instanceof HTMLCanvasElement)) {
-			entry.maskCanvas = document.createElement("canvas");
-		}
-
-		if (entry.maskCanvas.width !== width || entry.maskCanvas.height !== height) {
-			entry.maskCanvas.width = width;
-			entry.maskCanvas.height = height;
-			entry.maskContext = entry.maskCanvas.getContext("2d", { willReadFrequently: false });
-		}
-
-		return entry.maskContext;
-	};
-
-	const ensureHighlightMaskCanvas = (entry, width, height) => {
-		if (!(entry.highlightMaskCanvas instanceof HTMLCanvasElement)) {
-			entry.highlightMaskCanvas = document.createElement("canvas");
-		}
-
-		if (entry.highlightMaskCanvas.width !== width || entry.highlightMaskCanvas.height !== height) {
-			entry.highlightMaskCanvas.width = width;
-			entry.highlightMaskCanvas.height = height;
-			entry.highlightMaskContext = entry.highlightMaskCanvas.getContext("2d", {
-				willReadFrequently: false,
-			});
-		}
-
-		return entry.highlightMaskContext;
-	};
-
-
-	const prewarmRectangleNoiseLookups = () => {
-		noisePrewarmToken += 1;
-		const token = noisePrewarmToken;
-		const pendingEntries = yearRectangleElements.filter((entry) => {
-			if (entry.rectangle.style.display === "none" || entry.width <= 0 || entry.height <= 0) {
-				return false;
-			}
-
-			const pixelWidth = Math.max(1, Math.round(entry.width));
-			const pixelHeight = Math.max(1, Math.round(entry.height));
-			const expectedKey = `${pixelWidth}x${pixelHeight}:${entry.leftX.toFixed(2)}:${entry.topY.toFixed(2)}:${entry.width.toFixed(2)}:${entry.height.toFixed(2)}`;
-			return entry.noiseLookupKey !== expectedKey || !(entry.noiseLookup instanceof Uint8Array);
-		});
-
-		if (pendingEntries.length === 0) {
-			return;
-		}
-
-		const processChunk = (startIndex) => {
-			if (token !== noisePrewarmToken) {
-				return;
-			}
-
-			const chunkEnd = Math.min(startIndex + 2, pendingEntries.length);
-			for (let index = startIndex; index < chunkEnd; index += 1) {
-				const entry = pendingEntries[index];
-				const pixelWidth = Math.max(1, Math.round(entry.width));
-				const pixelHeight = Math.max(1, Math.round(entry.height));
-			}
-
-			if (chunkEnd >= pendingEntries.length) {
-				return;
-			}
-
-			window.setTimeout(() => processChunk(chunkEnd), 0);
-		};
-
-		window.setTimeout(() => processChunk(0), 0);
-	};
-
-	const rowTemplateCache = new Map();
-	const getRowTemplates = (pixelWidth) => {
-		const cacheKey = String(pixelWidth);
-		const existing = rowTemplateCache.get(cacheKey);
-		if (existing) {
-			return existing;
-		}
-
-		const rowLength = pixelWidth * 4;
-		const opaqueRow = new Uint8ClampedArray(rowLength);
-		const transparentRow = new Uint8ClampedArray(rowLength);
-		for (let idx = 0; idx < rowLength; idx += 4) {
-			opaqueRow[idx] = 255;
-			opaqueRow[idx + 1] = 255;
-			opaqueRow[idx + 2] = 255;
-			opaqueRow[idx + 3] = 255;
-
-			transparentRow[idx] = 255;
-			transparentRow[idx + 1] = 255;
-			transparentRow[idx + 2] = 255;
-			transparentRow[idx + 3] = 0;
-		}
-
-		const templates = { opaqueRow, transparentRow };
-		rowTemplateCache.set(cacheKey, templates);
-		return templates;
-	};
-
-	const ensureMaskImageData = (entry, context2d, width, height) => {
-		if (!(entry.maskImageData instanceof ImageData) || entry.maskImageData.width !== width || entry.maskImageData.height !== height) {
-			entry.maskImageData = context2d.createImageData(width, height);
-		}
-		return entry.maskImageData;
-	};
-
-	const ensureHighlightMaskImageData = (entry, context2d, width, height) => {
-		if (
-			!(entry.highlightMaskImageData instanceof ImageData) ||
-			entry.highlightMaskImageData.width !== width ||
-			entry.highlightMaskImageData.height !== height
-		) {
-			entry.highlightMaskImageData = context2d.createImageData(width, height);
-		}
-		return entry.highlightMaskImageData;
-	};
-
-	const updateRectangleShaderReveal = (timestampMs) => {
-		if (rectangleRevealStartTimestampMs === null) {
-			rectangleRevealStartTimestampMs = timestampMs;
-		}
-
-		const minFrameIntervalMs = 1000 / RECTANGLE_REVEAL_MAX_FPS;
-		if (timestampMs - lastRectangleRevealRenderTimestampMs < minFrameIntervalMs) {
-			rectangleRevealAnimationFrameId = window.requestAnimationFrame(updateRectangleShaderReveal);
-			return;
-		}
-		lastRectangleRevealRenderTimestampMs = timestampMs;
-
-		const revealElapsedSeconds = Math.max(
-			0,
-			(timestampMs - rectangleRevealStartTimestampMs - RECTANGLE_REVEAL_START_DELAY_MS) / 1000,
-		);
-		const A = RECTANGLE_REVEAL_SPEED_PX_PER_SECOND * revealElapsedSeconds;
-		const B = A - RECTANGLE_REVEAL_BAND_HEIGHT_PX;
-		let allRevealed = true;
-
-		yearRectangleElements.forEach((entry) => {
-			const { rectangle, highlightOverlay, leftX, topY, width, height } = entry;
-			if (rectangle.style.display === "none" || width <= 0 || height <= 0) {
-				highlightOverlay.style.opacity = "0";
-				clearHighlightMaskImage(highlightOverlay);
-				clearMaskImage(rectangle);
-				clearEntryMaskResources(entry);
-				return;
-			}
-
-			const rectangleBottomY = topY + height;
-			if (rectangleBottomY <= B) {
-				rectangle.style.opacity = "0.9";
-				highlightOverlay.style.opacity = "0";
-				clearMaskImage(rectangle);
-				clearHighlightMaskImage(highlightOverlay);
-				clearEntryMaskResources(entry);
-				return;
-			}
-
-			allRevealed = false;
-			if (topY >= A) {
-				rectangle.style.opacity = "0";
-				highlightOverlay.style.opacity = "0";
-				clearMaskImage(rectangle);
-				clearHighlightMaskImage(highlightOverlay);
-				clearEntryMaskResources(entry);
-				return;
-			}
-
-			rectangle.style.opacity = "0.9";
-			highlightOverlay.style.opacity = "0.95";
-			const pixelWidth = Math.max(1, Math.round(width));
-			const pixelHeight = Math.max(1, Math.round(height));
-			const xWorldStep = width / pixelWidth;
-			const yWorldStep = height / pixelHeight;
-			const context2d = ensureMaskCanvas(entry, pixelWidth, pixelHeight);
-			const highlightContext2d = ensureHighlightMaskCanvas(entry, pixelWidth, pixelHeight);
-			if (!context2d || !highlightContext2d) {
-				return;
-			}
-
-			const imageData = ensureMaskImageData(entry, context2d, pixelWidth, pixelHeight);
-			const data = imageData.data;
-			const highlightImageData = ensureHighlightMaskImageData(entry, highlightContext2d, pixelWidth, pixelHeight);
-			const highlightData = highlightImageData.data;
-			const { opaqueRow, transparentRow } = getRowTemplates(pixelWidth);
-			
-			for (let y = 0; y < pixelHeight; y += 1) {
-				const rowOffset = y * pixelWidth * 4;
-				data.set(opaqueRow, rowOffset);
-				highlightData.set(transparentRow, rowOffset);
-			}
-
-			context2d.putImageData(imageData, 0, 0);
-			highlightContext2d.putImageData(highlightImageData, 0, 0);
-			applyMaskImage(rectangle, entry.maskCanvas.toDataURL("image/png"));
-			applyHighlightMaskImage(highlightOverlay, entry.highlightMaskCanvas.toDataURL("image/png"));
-		});
-
-		if (!allRevealed) {
-			rectangleRevealAnimationFrameId = window.requestAnimationFrame(updateRectangleShaderReveal);
-			return;
-		}
-
-		rectangleRevealAnimationFrameId = 0;
-	};
-
-	const ensureRectangleRevealLoop = () => {
-		if (rectangleRevealAnimationFrameId !== 0) {
-			return;
-		}
-
-		rectangleRevealAnimationFrameId = window.requestAnimationFrame(updateRectangleShaderReveal);
-	};
 
 	const updateYearTickPositions = () => {
 		let maxYearY = 0;
@@ -536,12 +278,6 @@ function initializeTrajectoryPageBehavior() {
 			entry.leftX = linePageX + xOffsetPx - RECTANGLE_FIXED_WIDTH_PX / 2;
 			entry.topY = centerY - heightPx / 2;
 			rectangleText.textContent = typeof definition.title === "string" ? definition.title : "";
-
-			if (typeof definition.color === "string" && definition.color.trim().length > 0) {
-				rectangle.style.setProperty("--trajectory-rectangle-fill", definition.color.trim());
-			} else {
-				rectangle.style.removeProperty("--trajectory-rectangle-fill");
-			}
 
 			rectangle.dataset.id = typeof definition.id === "string" ? definition.id : `rect-${index}`;
 			rectangle.dataset.description =
@@ -601,10 +337,14 @@ function initializeTrajectoryPageBehavior() {
 	ensureYearRectangles();
 	updateLinePosition();
 
-	// Delay rectangle reveal loop by 5 seconds after page load
+
+	// Show all rectangles after 2 seconds
 	setTimeout(() => {
-		ensureRectangleRevealLoop();
-	}, 5000);
+		yearRectangleElements.forEach((entry) => {
+			entry.rectangle.style.opacity = "0.9";
+			entry.highlightOverlay.style.opacity = "0.95";
+		});
+	}, 2000);
 
 	window.requestAnimationFrame(updateLinePosition);
 	window.setTimeout(updateLinePosition, 200);
