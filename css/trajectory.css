@@ -258,6 +258,7 @@ body.trajectory-page .trajectory-year-rectangle-text {
 	font-weight: 700;
 	line-height: 1.2;
 	text-align: center;
+	white-space: pre-line;
 	transform: translateY(20px);
 	text-shadow:
 		-1px 0 0 #000000,

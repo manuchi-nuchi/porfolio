@@ -81,21 +81,38 @@ function initializeTrajectoryPageBehavior() {
 	const RECTANGLE_REVEAL_SPEED_PX_PER_SECOND = 100;
 	const RECTANGLE_REVEAL_MAX_FPS = 24;
 
+	const START_OFFSET = 120;
+	const COLUMN_GAP = 150;
+
     
 	const RECTANGLE_FIXED_WIDTH_PX = 100;
 	const TRAJECTORY_RECTANGLES_RIGHT = [
-		{ startYear: 2025, endYear: 2026, xOffsetPx: 120, title: "Aurora", description: "" },
-		{ startYear: 2021, endYear: 2023, xOffsetPx: 260, title: "Plasma", description: "" },
-		{ startYear: 2018, endYear: 2020, xOffsetPx: 190, title: "Neon", description: "" },
+		{ startYear: 2009.5, endYear: 2026.5, column: 1, title: "game\ndesign\n4\nmyself", description: "" },
+		{ startYear: 2022.5, endYear: 2026.5, column: 2, title: "unity\nteacher", description: "" },
+		{ startYear: 2019, endYear: 2020.4, column: 3, title: "game jams", description: "" },
+		{ startYear: 2020.8, endYear: 2026.5, column: 3, title: "more\ngame jams", description: "" },
+		{ startYear: 2024, endYear: 2026.5, column: 4, title: "prog\nexpert\n@\njams", description: "" },
+		{ startYear: 2019.5, endYear: 2022.5, column: 4, title: "fragua\ndev", description: "" },
+		{ startYear: 2016, endYear: 2017.8, column: 2, title: "3d\nmodelling", description: "" },
+		{ startYear: 2018.2, endYear: 2020.5, column: 2, title: "vg\nmusic", description: "" },
 	];
 	const TRAJECTORY_RECTANGLES_LEFT = [
-		{ startYear: 2019, endYear: 2022, xOffsetPx: 120, title: "Scan", description: "" },
-		{ startYear: 2018, endYear: 2023, xOffsetPx: 300, title: "Noise", description: "" },
-		{ startYear: 2020, endYear: 2024, xOffsetPx: 450, title: "Pulse", description: "" },
+		{ startYear: 2010.5, endYear: 2015.3, column: 1, title: "T&I", description: "" },
+		{ startYear: 2011.5, endYear: 2012.5, column: 2, title: "graz", description: "" },
+		{ startYear: 2015.7, endYear: 2020.1, column: 1, title: "CS", description: "" },
+		{ startYear: 2018.5, endYear: 2019.5, column: 2, title: "seoul", description: "" },
+		{ startYear: 2020.5, endYear: 2021.5, column: 1, title: "gamedev master's", description: "" },
+		{ startYear: 2010, endYear: 2013.3, column: 4, title: "de", description: "" },
+		{ startYear: 2010.5, endYear: 2014, column: 5, title: "中", description: "" },
+		{ startYear: 2013.7, endYear: 2015.2, column: 4, title: "ελ", description: "" },
+		{ startYear: 2018.3, endYear: 2020, column: 5, title: "한", description: "" },
+		{ startYear: 2015.6, endYear: 2020, column: 3, title: "c++", description: "" },
+		{ startYear: 2017.8, endYear: 2026.5, column: 4, title: "unity", description: "" },
+		{ startYear: 2025.7, endYear: 2026.5, column: 3, title: "godot", description: "" },
 	];
 	const TRAJECTORY_RECTANGLE_DEFINITIONS = [
-		...TRAJECTORY_RECTANGLES_RIGHT.map((definition) => ({ ...definition, side: "right" })),
-		...TRAJECTORY_RECTANGLES_LEFT.map((definition) => ({ ...definition, side: "left" })),
+		...TRAJECTORY_RECTANGLES_RIGHT.map((definition) => ({ ...definition, side: "right", xOffsetPx: START_OFFSET + (definition.column - 1) * COLUMN_GAP })),
+		...TRAJECTORY_RECTANGLES_LEFT.map((definition) => ({ ...definition, side: "left", xOffsetPx: START_OFFSET + (definition.column - 1) * COLUMN_GAP })),
 	];
 
 	window.TRAJECTORY_RECTANGLE_DEFINITIONS = TRAJECTORY_RECTANGLE_DEFINITIONS;
@@ -278,7 +295,14 @@ function initializeTrajectoryPageBehavior() {
 			entry.height = heightPx;
 			entry.leftX = linePageX + xOffsetPx - RECTANGLE_FIXED_WIDTH_PX / 2;
 			entry.topY = centerY - heightPx / 2;
-			rectangleText.textContent = typeof definition.title === "string" ? definition.title : "";
+			const titleText = typeof definition.title === "string" ? definition.title : "";
+			rectangleText.innerHTML = "";
+			titleText.split("\n").forEach((line, lineIndex) => {
+				if (lineIndex > 0) {
+					rectangleText.appendChild(document.createElement("br"));
+				}
+				rectangleText.appendChild(document.createTextNode(line));
+			});
 
 			rectangle.dataset.id = typeof definition.id === "string" ? definition.id : `rect-${index}`;
 			rectangle.dataset.description =
