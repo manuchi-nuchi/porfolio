@@ -183,6 +183,10 @@ body.trajectory-page .trajectory-year-rectangle:hover::before {
 	animation-play-state: paused;
 }
 
+body.trajectory-page .trajectory-year-rectangle:hover .trajectory-year-rectangle-highlight {
+	animation-play-state: paused !important;
+}
+
 body.trajectory-page .trajectory-year-rectangle:hover::after {
 	animation-play-state: paused;
 }
