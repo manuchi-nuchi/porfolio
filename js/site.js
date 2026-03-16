@@ -219,6 +219,7 @@ function applySavedSelectedTabTransform() {
 	}
 
 	activeTab.style.setProperty("--active-tab-hue", savedHue);
+	activeTab.classList.add("active-key-replay");
 	removeStorageItem(sessionStorage, NEXT_TAB_HUE_KEY);
 	removeStorageItem(sessionStorage, NEXT_TAB_PATH_KEY);
 }
@@ -282,6 +283,30 @@ function initializeResponsiveMenu(siteNav) {
 	resetMenuForWideScreen();
 }
 
+function applyRandomPressTilt(tab) {
+	const pressTilt = Math.random() * (TAB_ROTATION_MAX - TAB_ROTATION_MIN) + TAB_ROTATION_MIN;
+	const pressTranslateX = (Math.random() * 2 - 1) * TAB_PRESS_TRANSLATE_X_MAX;
+	const pressTranslateY = (Math.random() * 2 - 1) * TAB_PRESS_TRANSLATE_Y_MAX;
+	const randomHue = Math.floor(Math.random() * 360);
+	// Apply tilt and translation
+	tab.style.setProperty("--tab-press-tilt", `${pressTilt}deg`);
+	tab.style.setProperty("--tab-press-translate-x", `${pressTranslateX}px`);
+	tab.style.setProperty("--tab-press-translate-y", `${pressTranslateY}px`);
+	// Also update color and active tab tilt
+	tab.style.setProperty("--active-tab-rotation-clicked", `${pressTilt}deg`);
+	tab.style.setProperty("--active-tab-translate-x", `${pressTranslateX}px`);
+	tab.style.setProperty("--active-tab-translate-y", `${pressTranslateY}px`);
+	tab.style.setProperty("--active-tab-hue", String(randomHue));
+	tab.classList.add("mobile-pressed");
+}
+
+function clearPressTilt(tab) {
+	if (tab) {
+		tab.classList.remove("mobile-pressed");
+		tab.classList.remove("secret-touch-pressed");
+	}
+}
+
 function initializeTabSelectionPersistence() {
 	const siteNav = document.querySelector(".site-nav");
 	if (!siteNav) {
@@ -313,7 +338,7 @@ function initializeTabSelectionPersistence() {
 	let pressedKeyboardTab = null;
 	let proximitySelectedTab = null;
 	let bubbleSuppressionNeedsLeave = window.isPlayerBubbleSuppressed === true;
-	let activeReplayToggle = false;
+
 
 	const applyRandomTabPhaseSeed = (tab) => {
 		const randomPhaseX = Math.random() * 360;
@@ -346,14 +371,9 @@ function initializeTabSelectionPersistence() {
 		tab.style.setProperty("--active-tab-translate-x", `${pressTranslateX}px`);
 		tab.style.setProperty("--active-tab-translate-y", `${pressTranslateY}px`);
 		tab.style.setProperty("--active-tab-hue", String(randomHue));
-		tab.classList.remove("active-key-replay-a", "active-key-replay-b");
+		tab.classList.remove("active-key-replay");
 		void tab.offsetWidth;
-		const replayClassName = activeReplayToggle ? "active-key-replay-a" : "active-key-replay-b";
-		tab.classList.add(replayClassName);
-		activeReplayToggle = !activeReplayToggle;
-		setTimeout(() => {
-			tab.classList.remove("active-key-replay-a", "active-key-replay-b");
-		}, 220);
+		tab.classList.add("active-key-replay");
 	};
 
 	const clearKeyboardPressedTab = () => {
@@ -482,31 +502,21 @@ function initializeTabSelectionPersistence() {
 			applyRandomTabPhaseSeed(tab);
 		};
 
-		const applyRandomPressTilt = () => {
-			const pressTilt = Math.random() * (TAB_ROTATION_MAX - TAB_ROTATION_MIN) + TAB_ROTATION_MIN;
-			const pressTranslateX = (Math.random() * 2 - 1) * TAB_PRESS_TRANSLATE_X_MAX;
-			const pressTranslateY = (Math.random() * 2 - 1) * TAB_PRESS_TRANSLATE_Y_MAX;
-			tab.style.setProperty("--tab-press-tilt", `${pressTilt}deg`);
-			tab.style.setProperty("--tab-press-translate-x", `${pressTranslateX}px`);
-			tab.style.setProperty("--tab-press-translate-y", `${pressTranslateY}px`);
-			tab.classList.add("mobile-pressed");
-		};
-
 		const handlePointerDown = (event) => {
 			if (event.pointerType === "mouse") {
 				pressStartedFromTouch = false;
 				return;
 			}
 
-				if (isSecretTab) {
-					pressStartedFromTouch = false;
-					applyRandomSecretHoverTilt();
-					tab.classList.add("secret-touch-pressed");
-					return;
-				}
+			if (isSecretTab) {
+				pressStartedFromTouch = false;
+				applyRandomSecretHoverTilt();
+				tab.classList.add("secret-touch-pressed");
+				return;
+			}
 
 			pressStartedFromTouch = true;
-			applyRandomPressTilt();
+			applyRandomPressTilt(tab);
 		};
 
 		const handlePointerUp = (event) => {
@@ -524,25 +534,19 @@ function initializeTabSelectionPersistence() {
 		};
 
 		const handleTouchStart = () => {
-				if (isSecretTab) {
-					pressStartedFromTouch = false;
-					applyRandomSecretHoverTilt();
-					tab.classList.add("secret-touch-pressed");
-					return;
-				}
+			if (isSecretTab) {
+				pressStartedFromTouch = false;
+				applyRandomSecretHoverTilt();
+				tab.classList.add("secret-touch-pressed");
+				return;
+			}
 
 			pressStartedFromTouch = true;
-			applyRandomPressTilt();
+			applyRandomPressTilt(tab);
 		};
 
 		const handleTouchEnd = () => {
 			setTimeout(clearPressTilt, TAP_NAV_DELAY_MS);
-		};
-
-		const clearPressTilt = () => {
-			pressStartedFromTouch = false;
-			tab.classList.remove("mobile-pressed");
-				tab.classList.remove("secret-touch-pressed");
 		};
 
 		const handleTabClick = (event) => {
@@ -641,6 +645,7 @@ function initializeTabSelectionPersistence() {
 		if (digit < 1 || digit > 6) {
 			return;
 		}
+		console.log(digit);
 
 		const tab = tabs[digit - 1];
 		if (!(tab instanceof HTMLAnchorElement)) {
