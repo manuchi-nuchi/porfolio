@@ -2,7 +2,7 @@
   "name": "claude-diff-review",
   "displayName": "Claude Diff Review",
   "description": "Inline review of Claude's changes with per-block Keep/Revert buttons",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "publisher": "local",
   "engines": {
     "vscode": "^1.74.0"
@@ -13,21 +13,10 @@
   "main": "./extension.js",
   "contributes": {
     "commands": [
-      {
-        "command": "claude-diff-review.keep",
-        "title": "Keep This Change",
-        "category": "Claude Diff"
-      },
-      {
-        "command": "claude-diff-review.revert",
-        "title": "Revert This Change",
-        "category": "Claude Diff"
-      },
-      {
-        "command": "claude-diff-review.showOld",
-        "title": "Show Previous Code",
-        "category": "Claude Diff"
-      }
+      { "command": "claude-diff-review.keep",      "title": "Keep This Change" },
+      { "command": "claude-diff-review.revert",    "title": "Revert This Change" },
+      { "command": "claude-diff-review.keepAll",   "title": "Keep All Changes in File" },
+      { "command": "claude-diff-review.revertAll", "title": "Revert All Changes in File" }
     ]
   }
 }
