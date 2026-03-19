@@ -1,6 +1,4 @@
 
-
-
 function showResizeDebugA() {
 	if (!document.body.classList.contains('trajectory-page')) return;
 	// Hide warning if narrow screen
@@ -88,7 +86,7 @@ function initializeTrajectoryPageBehavior() {
     
 	const RECTANGLE_FIXED_WIDTH_PX = 100;
 	const TRAJECTORY_RECTANGLES_RIGHT = [
-		{ startYear: 2009.5, endYear: 2026.5, column: 1, title: "game\ndesign\n4\nmyself", description: "" },
+		{ startYear: 2009.5, endYear: 2026.5, column: 1, title: "game\ndesign\n4\nmyself", description: "klndasfladfd l gl gslk\nlñjksfg  jñ fgjñf sjñ sfgjñsfjñsfj ñfks jñkafñsgklsfjklñsfjlskjlñs kñl" },
 		{ startYear: 2022.5, endYear: 2026.5, column: 2, title: "unity\nteacher", description: "" },
 		{ startYear: 2019, endYear: 2020.4, column: 3, title: "game jams", description: "" },
 		{ startYear: 2020.8, endYear: 2026.5, column: 3, title: "more\ngame jams", description: "" },

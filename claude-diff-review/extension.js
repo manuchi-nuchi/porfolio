@@ -3,14 +3,22 @@ const fs = require('fs');
 const path = require('path');
 
 // ── State ───────────────────────────────────────────────────────────
-// snapshot  = the "accepted" content (baseline before Claude touched it)
-// fileHunks = computed diff blocks between snapshot and current content
-const snapshots = new Map();   // filePath → string
+const snapshots = new Map();   // filePath → string (baseline at enable time)
 const fileHunks = new Map();   // filePath → Hunk[]
 let nextHunkId = 1;
-
-// Prevent re-entrant watcher events during reverts
 let isReverting = false;
+let extensionEnabled = false;  // only tracks changes when true
+
+const SENTINEL = '.claude-diff-active'; // created by hook on prompt, deleted on stop
+
+function getWorkspaceRoot() {
+	return vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || null;
+}
+
+function sentinelPath() {
+	const root = getWorkspaceRoot();
+	return root ? path.join(root, SENTINEL) : null;
+}
 
 // ── LCS diff ────────────────────────────────────────────────────────
 function computeHunks(oldText, newText) {
@@ -18,11 +26,8 @@ function computeHunks(oldText, newText) {
 	const b = newText.split('\n');
 	const m = a.length, n = b.length;
 
-	// Build LCS table
 	const dp = [];
-	for (let i = 0; i <= m; i++) {
-		dp[i] = new Uint16Array(n + 1);
-	}
+	for (let i = 0; i <= m; i++) dp[i] = new Uint16Array(n + 1);
 	for (let i = 1; i <= m; i++) {
 		for (let j = 1; j <= n; j++) {
 			dp[i][j] = a[i - 1] === b[j - 1]
@@ -31,21 +36,13 @@ function computeHunks(oldText, newText) {
 		}
 	}
 
-	// Backtrack to get matched-line pairs
 	const matches = [];
 	let i = m, j = n;
 	while (i > 0 && j > 0) {
-		if (a[i - 1] === b[j - 1]) {
-			matches.unshift([i - 1, j - 1]);
-			i--; j--;
-		} else if (dp[i - 1][j] > dp[i][j - 1]) {
-			i--;
-		} else {
-			j--;
-		}
+		if (a[i - 1] === b[j - 1]) { matches.unshift([i - 1, j - 1]); i--; j--; }
+		else if (dp[i - 1][j] > dp[i][j - 1]) i--;
+		else j--;
 	}
-
-	// Sentinels
 	matches.unshift([-1, -1]);
 	matches.push([m, n]);
 
@@ -53,8 +50,7 @@ function computeHunks(oldText, newText) {
 	for (let k = 0; k < matches.length - 1; k++) {
 		const [oi, ni] = matches[k];
 		const [oj, nj] = matches[k + 1];
-		const os = oi + 1, oe = oj;
-		const ns = ni + 1, ne = nj;
+		const os = oi + 1, oe = oj, ns = ni + 1, ne = nj;
 		if (os < oe || ns < ne) {
 			hunks.push({
 				id: nextHunkId++,
@@ -68,24 +64,18 @@ function computeHunks(oldText, newText) {
 	return hunks;
 }
 
-// ── Recompute hunks for a file ──────────────────────────────────────
 function recompute(filePath, currentText) {
 	const snap = snapshots.get(filePath);
 	if (snap === undefined) return;
-
 	if (snap === currentText) {
 		fileHunks.delete(filePath);
 	} else {
 		const hunks = computeHunks(snap, currentText);
-		if (hunks.length > 0) {
-			fileHunks.set(filePath, hunks);
-		} else {
-			fileHunks.delete(filePath);
-		}
+		hunks.length > 0 ? fileHunks.set(filePath, hunks) : fileHunks.delete(filePath);
 	}
 }
 
-// ── File Decoration Provider (explorer badge) ───────────────────────
+// ── File Decoration Provider ─────────────────────────────────────────
 class FileDecoProvider {
 	constructor() {
 		this._onDidChange = new vscode.EventEmitter();
@@ -94,11 +84,7 @@ class FileDecoProvider {
 	provideFileDecoration(uri) {
 		const hunks = fileHunks.get(uri.fsPath);
 		if (hunks && hunks.length > 0) {
-			return {
-				badge: '✎',
-				color: new vscode.ThemeColor('charts.yellow'),
-				tooltip: `${hunks.length} change block(s) to review`
-			};
+			return { badge: '✎', color: new vscode.ThemeColor('charts.yellow'), tooltip: `${hunks.length} change block(s) to review` };
 		}
 		return undefined;
 	}
@@ -106,7 +92,7 @@ class FileDecoProvider {
 	fireAll() { this._onDidChange.fire(undefined); }
 }
 
-// ── CodeLens Provider (per-block buttons) ───────────────────────────
+// ── CodeLens Provider ────────────────────────────────────────────────
 class ChangeCodeLensProvider {
 	constructor() {
 		this._onDidChange = new vscode.EventEmitter();
@@ -123,7 +109,6 @@ class ChangeCodeLensProvider {
 			const line = Math.min(hunk.newStart, document.lineCount - 1);
 			const range = new vscode.Range(line, 0, line, 0);
 
-			// "Was:" preview
 			let preview;
 			if (hunk.oldCount === 0) {
 				preview = '(newly added)';
@@ -132,21 +117,9 @@ class ChangeCodeLensProvider {
 				preview = text.length > 120 ? text.substring(0, 120) + '…' : text;
 			}
 
-			lenses.push(new vscode.CodeLens(range, {
-				title: `Was: ${preview}`,
-				command: 'claude-diff-review.showOld',
-				arguments: [document.uri.fsPath, hunk.id]
-			}));
-			lenses.push(new vscode.CodeLens(range, {
-				title: '✓ Keep',
-				command: 'claude-diff-review.keep',
-				arguments: [document.uri.fsPath, hunk.id]
-			}));
-			lenses.push(new vscode.CodeLens(range, {
-				title: '✗ Revert',
-				command: 'claude-diff-review.revert',
-				arguments: [document.uri.fsPath, hunk.id]
-			}));
+			lenses.push(new vscode.CodeLens(range, { title: `Was: ${preview}`, command: 'claude-diff-review.showOld', arguments: [document.uri.fsPath, hunk.id] }));
+			lenses.push(new vscode.CodeLens(range, { title: '✓ Keep', command: 'claude-diff-review.keep', arguments: [document.uri.fsPath, hunk.id] }));
+			lenses.push(new vscode.CodeLens(range, { title: '✗ Revert', command: 'claude-diff-review.revert', arguments: [document.uri.fsPath, hunk.id] }));
 		}
 		return lenses;
 	}
@@ -157,7 +130,6 @@ function activate(context) {
 	const decoProvider = new FileDecoProvider();
 	const codeLensProvider = new ChangeCodeLensProvider();
 
-	// Decoration types for inline highlighting
 	const addedDecType = vscode.window.createTextEditorDecorationType({
 		backgroundColor: 'rgba(0, 180, 0, 0.13)',
 		isWholeLine: true,
@@ -177,194 +149,173 @@ function activate(context) {
 		removedMarkerDecType
 	);
 
-	// ── Initial snapshots of all workspace files ─────────────────────
-	vscode.workspace.findFiles('**/*', '**/{node_modules,.git,claude-diff-review}/**').then(files => {
-		for (const uri of files) {
-			try {
-				const content = fs.readFileSync(uri.fsPath, 'utf-8');
-				snapshots.set(uri.fsPath, content);
-			} catch {
-				// binary or unreadable – skip
+	// ── Enable / Disable ─────────────────────────────────────────────
+	function snapshotAll() {
+		return vscode.workspace.findFiles('**/*', '**/{node_modules,.git,claude-diff-review}/**').then(files => {
+			snapshots.clear();
+			for (const uri of files) {
+				try { snapshots.set(uri.fsPath, fs.readFileSync(uri.fsPath, 'utf-8')); }
+				catch { /* binary – skip */ }
 			}
+		});
+	}
+
+	function clearUI() {
+		fileHunks.clear();
+		decoProvider.fireAll();
+		codeLensProvider.refresh();
+		const editor = vscode.window.activeTextEditor;
+		if (editor) {
+			editor.setDecorations(addedDecType, []);
+			editor.setDecorations(removedMarkerDecType, []);
 		}
-	});
+	}
 
-	// Snapshot files on first open (catches files not found by findFiles)
-	context.subscriptions.push(
-		vscode.workspace.onDidOpenTextDocument(doc => {
-			if (doc.uri.scheme === 'file' && !snapshots.has(doc.uri.fsPath)) {
-				snapshots.set(doc.uri.fsPath, doc.getText());
-			}
-		})
-	);
+	async function enableExtension() {
+		if (extensionEnabled) return;
+		// Fresh snapshots = new baseline; wipe any stale hunks from last session
+		clearUI();
+		await snapshotAll();
+		extensionEnabled = true;
+	}
 
-	// ── Apply inline decorations to the active editor ────────────────
+	function disableExtension() {
+		// Stop tracking new changes; keep existing hunks visible for review
+		extensionEnabled = false;
+	}
+
+	// Check sentinel on startup (in case VSCode reloaded mid-session)
+	const sp = sentinelPath();
+	if (sp && fs.existsSync(sp)) enableExtension();
+
+	// ── Decorations ──────────────────────────────────────────────────
 	function applyDecorations(editor) {
 		if (!editor || editor.document.uri.scheme !== 'file') return;
 		const hunks = fileHunks.get(editor.document.uri.fsPath);
-
-		const addedRanges = [];
-		const removedRanges = [];
+		const addedRanges = [], removedRanges = [];
 
 		if (hunks) {
 			for (const hunk of hunks) {
-				// Green highlight on changed / added lines
 				for (let i = 0; i < hunk.newCount; i++) {
 					const ln = hunk.newStart + i;
-					if (ln < editor.document.lineCount) {
+					if (ln < editor.document.lineCount)
 						addedRanges.push(new vscode.Range(ln, 0, ln, editor.document.lineAt(ln).text.length));
-					}
 				}
-				// Red overview-ruler marker when lines were deleted with nothing replacing them
 				if (hunk.oldCount > 0 && hunk.newCount === 0) {
 					const ln = Math.min(hunk.newStart, editor.document.lineCount - 1);
 					removedRanges.push({
 						range: new vscode.Range(ln, 0, ln, 0),
-						renderOptions: {
-							after: {
-								contentText: `  ⊘ ${hunk.oldCount} line(s) removed`,
-								color: '#ff6666',
-								fontStyle: 'italic'
-							}
-						}
+						renderOptions: { after: { contentText: `  ⊘ ${hunk.oldCount} line(s) removed`, color: '#ff6666', fontStyle: 'italic' } }
 					});
 				}
 			}
 		}
-
 		editor.setDecorations(addedDecType, addedRanges);
 		editor.setDecorations(removedMarkerDecType, removedRanges);
 	}
 
-	// ── Watch for document changes (covers both Claude writes and user edits) ──
+	// ── FileSystemWatcher ─────────────────────────────────────────────
+	// This is the ONLY change trigger. Claude writes files to disk directly;
+	// user edits go through the editor buffer and are NOT picked up here
+	// (unless the user explicitly saves, but since extensionEnabled is only
+	// true during a Claude session, any save during that window is Claude's).
 	const debounceTimers = new Map();
 
 	function scheduleRecompute(filePath) {
-		if (isReverting) return;
+		if (!extensionEnabled || isReverting) return;
 		const existing = debounceTimers.get(filePath);
 		if (existing) clearTimeout(existing);
 		debounceTimers.set(filePath, setTimeout(() => {
 			debounceTimers.delete(filePath);
-
 			let current;
 			try { current = fs.readFileSync(filePath, 'utf-8'); }
 			catch { return; }
-
 			recompute(filePath, current);
 			decoProvider.fire(vscode.Uri.file(filePath));
 			codeLensProvider.refresh();
-
 			const editor = vscode.window.activeTextEditor;
-			if (editor && editor.document.uri.fsPath === filePath) {
-				applyDecorations(editor);
-			}
+			if (editor && editor.document.uri.fsPath === filePath) applyDecorations(editor);
 		}, 400));
 	}
 
-	// Editor-buffer changes
-	context.subscriptions.push(
-		vscode.workspace.onDidChangeTextDocument(event => {
-			if (event.document.uri.scheme !== 'file') return;
-			scheduleRecompute(event.document.uri.fsPath);
-		})
-	);
-
-	// Disk changes (Claude writes files directly)
 	const watcher = vscode.workspace.createFileSystemWatcher('**/*');
 	context.subscriptions.push(watcher);
-	watcher.onDidChange(uri => {
-		if (/[/\\](\.git|node_modules|claude-diff-review)[/\\]/.test(uri.fsPath)) return;
-		// Ensure a snapshot exists
-		if (!snapshots.has(uri.fsPath)) {
-			try { snapshots.set(uri.fsPath, fs.readFileSync(uri.fsPath, 'utf-8')); }
-			catch { return; }
-		}
-		scheduleRecompute(uri.fsPath);
+
+	// Sentinel created → enable
+	watcher.onDidCreate(uri => {
+		if (path.basename(uri.fsPath) === SENTINEL) { enableExtension(); return; }
 	});
 
-	// Redraw when user switches tabs
+	// Sentinel deleted → disable (keep hunks for review)
+	watcher.onDidDelete(uri => {
+		if (path.basename(uri.fsPath) === SENTINEL) { disableExtension(); return; }
+	});
+
+	// File changed on disk → only track during Claude's session
+	watcher.onDidChange(uri => {
+		if (!extensionEnabled) return;
+		const fp = uri.fsPath;
+		if (/[/\\](\.git|node_modules|claude-diff-review)[/\\]/.test(fp)) return;
+		if (path.basename(fp) === SENTINEL) return;
+		if (!snapshots.has(fp)) {
+			try { snapshots.set(fp, fs.readFileSync(fp, 'utf-8')); }
+			catch { return; }
+		}
+		scheduleRecompute(fp);
+	});
+
+	// Redraw on tab switch
 	context.subscriptions.push(
-		vscode.window.onDidChangeActiveTextEditor(editor => {
-			if (editor) applyDecorations(editor);
-		})
+		vscode.window.onDidChangeActiveTextEditor(editor => { if (editor) applyDecorations(editor); })
 	);
 
-	// ── Commands ─────────────────────────────────────────────────────
-
-	// Show previous code in an output channel
+	// ── Commands ──────────────────────────────────────────────────────
 	context.subscriptions.push(
 		vscode.commands.registerCommand('claude-diff-review.showOld', (filePath, hunkId) => {
-			const hunks = fileHunks.get(filePath);
-			if (!hunks) return;
-			const hunk = hunks.find(h => h.id === hunkId);
+			const hunk = fileHunks.get(filePath)?.find(h => h.id === hunkId);
 			if (!hunk) return;
-
-			if (hunk.oldLines.length === 0) {
-				vscode.window.showInformationMessage('This block is newly added — there is no previous code.');
-				return;
-			}
-
+			if (hunk.oldLines.length === 0) { vscode.window.showInformationMessage('This block is newly added — there is no previous code.'); return; }
 			const channel = vscode.window.createOutputChannel('Claude: Previous Code');
 			channel.clear();
 			channel.appendLine('─── Previous code ───');
-			for (const line of hunk.oldLines) {
-				channel.appendLine(line);
-			}
+			hunk.oldLines.forEach(l => channel.appendLine(l));
 			channel.appendLine('─────────────────────');
 			channel.show(true);
 		})
 	);
 
-	// Keep: accept a single change block
 	context.subscriptions.push(
 		vscode.commands.registerCommand('claude-diff-review.keep', (filePath, hunkId) => {
 			const hunks = fileHunks.get(filePath);
 			if (!hunks) return;
 			const idx = hunks.findIndex(h => h.id === hunkId);
 			if (idx === -1) return;
-
 			let current;
 			try { current = fs.readFileSync(filePath, 'utf-8'); }
 			catch { return; }
 
-			// Remove the kept hunk
 			hunks.splice(idx, 1);
-
 			if (hunks.length === 0) {
-				// All changes accepted
 				snapshots.set(filePath, current);
 				fileHunks.delete(filePath);
 			} else {
-				// Rebuild snapshot: current content with remaining hunks "undone"
-				const currentLines = current.split('\n');
-				const snapshotLines = [...currentLines];
-				const sorted = [...hunks].sort((a, b) => b.newStart - a.newStart);
-				for (const h of sorted) {
-					snapshotLines.splice(h.newStart, h.newCount, ...h.oldLines);
-				}
+				const snapshotLines = [...current.split('\n')];
+				[...hunks].sort((a, b) => b.newStart - a.newStart)
+					.forEach(h => snapshotLines.splice(h.newStart, h.newCount, ...h.oldLines));
 				snapshots.set(filePath, snapshotLines.join('\n'));
-
-				// Recompute with fresh IDs
 				recompute(filePath, current);
 			}
-
 			decoProvider.fire(vscode.Uri.file(filePath));
 			codeLensProvider.refresh();
 			const editor = vscode.window.activeTextEditor;
-			if (editor && editor.document.uri.fsPath === filePath) {
-				applyDecorations(editor);
-			}
+			if (editor && editor.document.uri.fsPath === filePath) applyDecorations(editor);
 		})
 	);
 
-	// Revert: undo a single change block
 	context.subscriptions.push(
 		vscode.commands.registerCommand('claude-diff-review.revert', async (filePath, hunkId) => {
-			const hunks = fileHunks.get(filePath);
-			if (!hunks) return;
-			const hunk = hunks.find(h => h.id === hunkId);
+			const hunk = fileHunks.get(filePath)?.find(h => h.id === hunkId);
 			if (!hunk) return;
-
 			let current;
 			try { current = fs.readFileSync(filePath, 'utf-8'); }
 			catch { return; }
@@ -375,23 +326,17 @@ function activate(context) {
 
 			isReverting = true;
 			fs.writeFileSync(filePath, newContent, 'utf-8');
-
-			// Small delay so VSCode picks up the disk change
 			await new Promise(r => setTimeout(r, 150));
 			isReverting = false;
 
 			recompute(filePath, newContent);
 			decoProvider.fire(vscode.Uri.file(filePath));
 			codeLensProvider.refresh();
-
 			const editor = vscode.window.activeTextEditor;
-			if (editor && editor.document.uri.fsPath === filePath) {
-				applyDecorations(editor);
-			}
+			if (editor && editor.document.uri.fsPath === filePath) applyDecorations(editor);
 		})
 	);
 }
 
 function deactivate() {}
-
 module.exports = { activate, deactivate };
