@@ -11,7 +11,6 @@ function getImagesFromGlobalManifest() {
 		.filter((imageName) => typeof imageName === "string" && imageName.trim().length > 0)
 		.map((imageName) => `${CAROUSEL_FOLDER}/${imageName}`);
 }
-
 async function loadCarouselImages() {
 	const globalImages = getImagesFromGlobalManifest();
 	if (globalImages.length > 0) {
